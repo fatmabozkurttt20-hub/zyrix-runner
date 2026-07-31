@@ -308,7 +308,7 @@ function tick(
   for (const c of g.crystalObjects) {
     if (
       !c.collected &&
-      c.lane === g.playerLane &&
+      c.lane === collisionLane &&
       c.progress >= GAME_CONFIG.CRYSTAL_NEAR &&
       c.progress <= GAME_CONFIG.CRYSTAL_FAR
     ) {
