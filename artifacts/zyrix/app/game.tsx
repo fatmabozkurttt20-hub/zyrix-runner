@@ -9,7 +9,8 @@ import { useGameAudio } from '@/hooks/useGameAudio';
 import { usePlayer } from '@/context/PlayerContext';
 
 export default function GameScreen() {
-  const { hapticsEnabled, soundEnabled, addCrystals, updateHighScore, incrementRuns } = usePlayer();
+  const { hapticsEnabled, soundEnabled, toggleSound, addCrystals, updateHighScore, incrementRuns } =
+    usePlayer();
   const audio = useGameAudio(soundEnabled);
   const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -109,6 +110,8 @@ export default function GameScreen() {
           onResume={handleResume}
           onRestart={handleRestart}
           onQuit={handleQuit}
+          soundEnabled={soundEnabled}
+          onToggleSound={toggleSound}
         />
       )}
     </View>

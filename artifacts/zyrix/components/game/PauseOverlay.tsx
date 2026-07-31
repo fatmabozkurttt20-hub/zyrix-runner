@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { NeonButton } from '@/components/ui/NeonButton';
 import colors from '@/constants/colors';
 
@@ -7,9 +8,17 @@ interface PauseOverlayProps {
   onResume: () => void;
   onRestart: () => void;
   onQuit: () => void;
+  soundEnabled: boolean;
+  onToggleSound: () => void;
 }
 
-export function PauseOverlay({ onResume, onRestart, onQuit }: PauseOverlayProps) {
+export function PauseOverlay({
+  onResume,
+  onRestart,
+  onQuit,
+  soundEnabled,
+  onToggleSound,
+}: PauseOverlayProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
@@ -24,6 +33,20 @@ export function PauseOverlay({ onResume, onRestart, onQuit }: PauseOverlayProps)
     <Animated.View style={[StyleSheet.absoluteFill, styles.overlay, { opacity: fadeAnim }]}>
       <Animated.View style={[styles.card, { transform: [{ translateY: slideAnim }] }]}>
         <Text style={styles.title}>PAUSED</Text>
+        <Pressable
+          onPress={onToggleSound}
+          accessibilityRole="button"
+          accessibilityLabel={soundEnabled ? 'Mute sound' : 'Unmute sound'}
+          hitSlop={8}
+          style={({ pressed }) => [styles.soundButton, pressed && styles.soundButtonPressed]}
+          testID="pause-sound-toggle"
+        >
+          <Ionicons
+            name={soundEnabled ? 'volume-high' : 'volume-mute'}
+            size={22}
+            color={soundEnabled ? colors.dark.primary : colors.dark.mutedForeground}
+          />
+        </Pressable>
         <View style={styles.divider} />
         <View style={styles.buttons}>
           <NeonButton label="RESUME" onPress={onResume} color={colors.dark.primary} />
@@ -62,6 +85,20 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     letterSpacing: 8,
     marginBottom: 4,
+  },
+  soundButton: {
+    marginTop: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.dark.border,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  soundButtonPressed: {
+    opacity: 0.6,
   },
   divider: {
     width: '60%',
