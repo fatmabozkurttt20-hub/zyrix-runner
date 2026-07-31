@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   Easing,
@@ -11,7 +11,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Line } from 'react-native-svg';
 import {
   SCREEN_W,
-  SCREEN_H,
   HORIZON_Y,
   PLAYER_Y,
   VP_X,
@@ -23,7 +22,6 @@ import {
   OBSTACLE_DIMS,
   WORLDS,
   World,
-  ObstacleType,
 } from '@/constants/game';
 import { GameDisplayState, SpawnedObstacle, SpawnedCrystal } from '@/hooks/useGame';
 
@@ -33,10 +31,18 @@ const BOARD_H = GAME_CONFIG.PLAYER_H;
 const BOARD_HALF_W = BOARD_W / 2;
 const TRACK_H = PLAYER_Y + 120 - HORIZON_Y;
 
+// ─── Perspective Helper ───────────────────────────────────────────────────────
+function perspPos(lane: 0 | 1 | 2, progress: number) {
+  const t = Math.max(0, Math.min(1.3, progress));
+  const ease = Math.pow(t, 0.85);
+  const x = LANE_X_HORIZON[lane] + (LANE_X_BOTTOM[lane] - LANE_X_HORIZON[lane]) * ease;
+  const y = HORIZON_Y + (PLAYER_Y - HORIZON_Y) * ease;
+  const scale = Math.max(0.04, 0.05 + 0.95 * ease);
+  return { x, y, scale };
+}
+
 // ─── Track Lines (SVG) ────────────────────────────────────────────────────────
 const TrackLines = React.memo(({ world }: { world: World }) => {
-  const div1X = VP_X + (LANE_X_BOTTOM[0] + (LANE_X_BOTTOM[1] - LANE_X_BOTTOM[0]) / 2 - VP_X) * 1;
-  const div2X = VP_X + (LANE_X_BOTTOM[1] + (LANE_X_BOTTOM[2] - LANE_X_BOTTOM[1]) / 2 - VP_X) * 1;
   const laneHalfW = (LANE_X_BOTTOM[1] - LANE_X_BOTTOM[0]) / 2;
   const divH1 = LANE_X_BOTTOM[0] + laneHalfW;
   const divH2 = LANE_X_BOTTOM[1] + laneHalfW;
@@ -46,12 +52,10 @@ const TrackLines = React.memo(({ world }: { world: World }) => {
       height={TRACK_H}
       style={[StyleSheet.absoluteFill, { top: HORIZON_Y }]}
     >
-      {/* Outer edges */}
-      <Line x1={VP_X} y1={0} x2={TRACK_LEFT_X} y2={TRACK_H} stroke={world.trackColor} strokeWidth={2} opacity={0.85} />
-      <Line x1={VP_X} y1={0} x2={TRACK_RIGHT_X} y2={TRACK_H} stroke={world.trackColor} strokeWidth={2} opacity={0.85} />
-      {/* Lane dividers */}
-      <Line x1={LANE_X_HORIZON[0] + (LANE_X_HORIZON[1] - LANE_X_HORIZON[0]) / 2} y1={0} x2={divH1} y2={TRACK_H} stroke={world.trackColor} strokeWidth={1} opacity={0.3} />
-      <Line x1={LANE_X_HORIZON[1] + (LANE_X_HORIZON[2] - LANE_X_HORIZON[1]) / 2} y1={0} x2={divH2} y2={TRACK_H} stroke={world.trackColor} strokeWidth={1} opacity={0.3} />
+      <Line x1={VP_X} y1={0} x2={TRACK_LEFT_X} y2={TRACK_H} stroke={world.trackColor} strokeWidth={2.5} opacity={0.9} />
+      <Line x1={VP_X} y1={0} x2={TRACK_RIGHT_X} y2={TRACK_H} stroke={world.trackColor} strokeWidth={2.5} opacity={0.9} />
+      <Line x1={LANE_X_HORIZON[0] + (LANE_X_HORIZON[1] - LANE_X_HORIZON[0]) / 2} y1={0} x2={divH1} y2={TRACK_H} stroke={world.trackColor} strokeWidth={1} opacity={0.32} />
+      <Line x1={LANE_X_HORIZON[1] + (LANE_X_HORIZON[2] - LANE_X_HORIZON[1]) / 2} y1={0} x2={divH2} y2={TRACK_H} stroke={world.trackColor} strokeWidth={1} opacity={0.32} />
     </Svg>
   );
 });
@@ -59,13 +63,14 @@ const TrackLines = React.memo(({ world }: { world: World }) => {
 // ─── Speed Lines (scrolling horizontal grid) ──────────────────────────────────
 function SpeedLines({ scrollOffset, world }: { scrollOffset: number; world: World }) {
   const lines = [];
-  const N = 8;
+  const N = 9;
   for (let i = 0; i < N; i++) {
     const progress = ((i / N) + scrollOffset) % 1;
     if (progress < 0.04) continue;
-    const y = HORIZON_Y + (PLAYER_Y - HORIZON_Y) * progress;
-    const leftX = VP_X + (TRACK_LEFT_X - VP_X) * progress;
-    const rightX = VP_X + (TRACK_RIGHT_X - VP_X) * progress;
+    const eased = Math.pow(progress, 0.85);
+    const y = HORIZON_Y + (PLAYER_Y + 60 - HORIZON_Y) * eased;
+    const leftX = VP_X + (TRACK_LEFT_X - VP_X) * eased;
+    const rightX = VP_X + (TRACK_RIGHT_X - VP_X) * eased;
     lines.push(
       <View
         key={i}
@@ -74,9 +79,9 @@ function SpeedLines({ scrollOffset, world }: { scrollOffset: number; world: Worl
           left: leftX,
           top: y,
           width: rightX - leftX,
-          height: 1,
+          height: Math.max(1, 2.5 * eased),
           backgroundColor: world.trackColor,
-          opacity: 0.08 + 0.22 * progress,
+          opacity: 0.06 + 0.26 * eased,
         }}
       />
     );
@@ -86,13 +91,13 @@ function SpeedLines({ scrollOffset, world }: { scrollOffset: number; world: Worl
 
 // ─── Obstacle View ────────────────────────────────────────────────────────────
 function ObstacleView({ obstacle, world }: { obstacle: SpawnedObstacle; world: World }) {
-  const { x, y, scale } = usePerspPos(obstacle.lane, obstacle.progress);
+  const { x, y, scale } = perspPos(obstacle.lane, obstacle.progress);
   const base = GAME_CONFIG.OBSTACLE_BASE_SIZE * scale;
   const dims = OBSTACLE_DIMS[obstacle.type] ?? OBSTACLE_DIMS.block;
   const w = base * dims.w;
   const h = base * dims.h;
   const radius = Math.max(2, base * 0.07);
-  const opacity = obstacle.hit ? 0 : 1;
+  if (obstacle.hit) return null;
 
   if (obstacle.type === 'ring') {
     return (
@@ -104,10 +109,9 @@ function ObstacleView({ obstacle, world }: { obstacle: SpawnedObstacle; world: W
           width: w,
           height: h,
           borderRadius: w / 2,
-          borderWidth: Math.max(1.5, w * 0.11),
+          borderWidth: Math.max(1.5, w * 0.12),
           borderColor: world.obstacleColor,
           backgroundColor: 'transparent',
-          opacity,
         }}
       />
     );
@@ -118,42 +122,44 @@ function ObstacleView({ obstacle, world }: { obstacle: SpawnedObstacle; world: W
       style={{
         position: 'absolute',
         left: x - w / 2,
-        top: y - h / 2,
+        top: y - h,
         width: w,
         height: h,
         backgroundColor: world.obstacleColor,
         borderRadius: radius,
-        opacity,
+        borderWidth: Math.max(1, base * 0.03),
+        borderColor: 'rgba(255,255,255,0.55)',
         shadowColor: world.obstacleColor,
         shadowOffset: { width: 0, height: 0 },
-        shadowRadius: Math.max(4, base * 0.18),
-        shadowOpacity: 0.85,
+        shadowRadius: Math.max(4, base * 0.2),
+        shadowOpacity: 0.9,
         elevation: 5,
       }}
     />
   );
 }
 
-// ─── Crystal View ─────────────────────────────────────────────────────────────
+// ─── Crystal View (diamond shape) ─────────────────────────────────────────────
 function CrystalView({ crystal, world }: { crystal: SpawnedCrystal; world: World }) {
-  const { x, y, scale } = usePerspPos(crystal.lane, crystal.progress);
+  const { x, y, scale } = perspPos(crystal.lane, crystal.progress);
   const size = GAME_CONFIG.CRYSTAL_BASE_SIZE * scale;
-  const radius = Math.max(1.5, size * 0.14);
-  if (crystal.collected) return null;
+  if (crystal.collected || crystal.progress < 0) return null;
   return (
     <View
       style={{
         position: 'absolute',
         left: x - size / 2,
-        top: y - size / 2,
+        top: y - size,
         width: size,
         height: size,
         backgroundColor: world.crystalColor,
-        borderRadius: radius,
-        transform: [{ rotate: `${crystal.rotation}deg` }],
+        borderRadius: Math.max(1, size * 0.12),
+        transform: [{ rotate: '45deg' }],
+        borderWidth: Math.max(0.5, size * 0.06),
+        borderColor: 'rgba(255,255,255,0.8)',
         shadowColor: world.crystalColor,
         shadowOffset: { width: 0, height: 0 },
-        shadowRadius: Math.max(6, size * 0.45),
+        shadowRadius: Math.max(6, size * 0.5),
         shadowOpacity: 1,
         elevation: 6,
       }}
@@ -164,25 +170,31 @@ function CrystalView({ crystal, world }: { crystal: SpawnedCrystal; world: World
 // ─── Player View ──────────────────────────────────────────────────────────────
 function PlayerView({
   playerX,
-  invincible,
+  boardTilt,
+  jumpY,
   world,
 }: {
   playerX: Animated.Value;
-  invincible: boolean;
+  boardTilt: Animated.Value;
+  jumpY: Animated.Value;
   world: World;
 }) {
   const hoverY = useRef(new Animated.Value(0)).current;
   const glowOpacity = useRef(new Animated.Value(0.6)).current;
-  const playerOpacity = useRef(new Animated.Value(1)).current;
-  const flashRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const translateX = useRef(Animated.subtract(playerX, BOARD_HALF_W)).current;
+  const tiltDeg = useRef(
+    boardTilt.interpolate({
+      inputRange: [-30, 0, 30],
+      outputRange: ['-30deg', '0deg', '30deg'],
+    })
+  ).current;
 
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(hoverY, { toValue: -5, duration: 820, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-        Animated.timing(hoverY, { toValue: 0, duration: 820, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+        Animated.timing(hoverY, { toValue: -5, duration: 780, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+        Animated.timing(hoverY, { toValue: 0, duration: 780, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
       ])
     );
     anim.start();
@@ -192,29 +204,13 @@ function PlayerView({
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(glowOpacity, { toValue: 1.0, duration: 650, useNativeDriver: true }),
-        Animated.timing(glowOpacity, { toValue: 0.3, duration: 650, useNativeDriver: true }),
+        Animated.timing(glowOpacity, { toValue: 1.0, duration: 600, useNativeDriver: true }),
+        Animated.timing(glowOpacity, { toValue: 0.35, duration: 600, useNativeDriver: true }),
       ])
     );
     anim.start();
     return () => anim.stop();
   }, [glowOpacity]);
-
-  useEffect(() => {
-    if (invincible) {
-      flashRef.current = Animated.loop(
-        Animated.sequence([
-          Animated.timing(playerOpacity, { toValue: 0.15, duration: 110, useNativeDriver: true }),
-          Animated.timing(playerOpacity, { toValue: 1, duration: 110, useNativeDriver: true }),
-        ])
-      );
-      flashRef.current.start();
-    } else {
-      flashRef.current?.stop();
-      flashRef.current = null;
-      playerOpacity.setValue(1);
-    }
-  }, [invincible, playerOpacity]);
 
   return (
     <Animated.View
@@ -223,8 +219,11 @@ function PlayerView({
         top: PLAYER_Y - BOARD_H / 2,
         width: BOARD_W,
         height: BOARD_H,
-        opacity: playerOpacity,
-        transform: [{ translateX }, { translateY: hoverY }],
+        transform: [
+          { translateX },
+          { translateY: Animated.add(hoverY, jumpY) },
+          { rotate: tiltDeg },
+        ],
       }}
     >
       {/* Thruster glow */}
@@ -250,9 +249,9 @@ function PlayerView({
         style={{
           position: 'absolute',
           left: 0, top: 0, right: 0, bottom: 0,
-          borderRadius: 8,
+          borderRadius: 10,
           backgroundColor: '#0C0C20',
-          borderWidth: 1.5,
+          borderWidth: 2,
           borderColor: world.trackColor,
         }}
       />
@@ -260,13 +259,13 @@ function PlayerView({
       <View
         style={{
           position: 'absolute',
-          left: BOARD_W * 0.22,
-          right: BOARD_W * 0.22,
+          left: BOARD_W * 0.20,
+          right: BOARD_W * 0.20,
           top: BOARD_H * 0.32,
           height: BOARD_H * 0.36,
           backgroundColor: world.accentColor,
-          opacity: 0.55,
-          borderRadius: 2,
+          opacity: 0.6,
+          borderRadius: 3,
         }}
       />
       {/* Rider silhouette */}
@@ -276,10 +275,10 @@ function PlayerView({
           left: BOARD_W * 0.36,
           bottom: BOARD_H + 1,
           width: BOARD_W * 0.28,
-          height: BOARD_W * 0.36,
+          height: BOARD_W * 0.38,
           backgroundColor: '#EEEEFF',
           borderRadius: BOARD_W * 0.14,
-          opacity: 0.88,
+          opacity: 0.9,
         }}
       />
     </Animated.View>
@@ -303,7 +302,7 @@ function PortalFlash({ world }: { world: World }) {
   );
 }
 
-// ─── Stars (background particles) ────────────────────────────────────────────
+// ─── Stars ────────────────────────────────────────────────────────────────────
 const STARS = Array.from({ length: 28 }, (_, i) => ({
   id: i,
   x: Math.random() * SCREEN_W,
@@ -334,42 +333,60 @@ function Stars({ world }: { world: World }) {
   );
 }
 
-// ─── Perspective Helper ───────────────────────────────────────────────────────
-function usePerspPos(lane: 0 | 1 | 2, progress: number) {
-  const t = Math.max(0, Math.min(1.3, progress));
-  const ease = Math.pow(t, 0.88);
-  const x = LANE_X_HORIZON[lane] + (LANE_X_BOTTOM[lane] - LANE_X_HORIZON[lane]) * ease;
-  const y = HORIZON_Y + (PLAYER_Y - HORIZON_Y) * ease;
-  const scale = Math.max(0.05, 0.06 + 0.94 * ease);
-  return { x, y, scale };
-}
-
 // ─── Main GameScene ───────────────────────────────────────────────────────────
 interface GameSceneProps {
   displayState: GameDisplayState;
   playerX: Animated.Value;
-  onTouchLeft: () => void;
-  onTouchRight: () => void;
+  boardTilt: Animated.Value;
+  jumpY: Animated.Value;
+  onSwipeLeft: () => void;
+  onSwipeRight: () => void;
+  onSwipeUp: () => void;
 }
 
-export function GameScene({ displayState, playerX, onTouchLeft, onTouchRight }: GameSceneProps) {
+export function GameScene({
+  displayState,
+  playerX,
+  boardTilt,
+  jumpY,
+  onSwipeLeft,
+  onSwipeRight,
+  onSwipeUp,
+}: GameSceneProps) {
   const world = WORLDS[displayState.worldIndex];
+  const firedRef = useRef(false);
 
+  // Swipe detection: fires as soon as movement crosses the threshold —
+  // no waiting for finger release. Horizontal beats vertical unless the
+  // gesture is clearly upward.
   const panHandlers = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => false,
-        onPanResponderGrant: (e) => {
-          const { locationX } = e.nativeEvent;
-          if (locationX < SCREEN_W / 2) {
-            onTouchLeft();
-          } else {
-            onTouchRight();
+        onMoveShouldSetPanResponder: (_, g) =>
+          Math.abs(g.dx) > 6 || Math.abs(g.dy) > 6,
+        onPanResponderGrant: () => {
+          firedRef.current = false;
+        },
+        onPanResponderMove: (_, g) => {
+          if (firedRef.current) return;
+          const T = GAME_CONFIG.SWIPE_THRESHOLD;
+          if (g.dy < -T && Math.abs(g.dy) > Math.abs(g.dx)) {
+            firedRef.current = true;
+            onSwipeUp();
+          } else if (g.dx > T && Math.abs(g.dx) >= Math.abs(g.dy)) {
+            firedRef.current = true;
+            onSwipeRight();
+          } else if (g.dx < -T && Math.abs(g.dx) >= Math.abs(g.dy)) {
+            firedRef.current = true;
+            onSwipeLeft();
           }
         },
+        onPanResponderRelease: () => {
+          firedRef.current = false;
+        },
       }).panHandlers,
-    [onTouchLeft, onTouchRight]
+    [onSwipeLeft, onSwipeRight, onSwipeUp]
   );
 
   return (
@@ -380,17 +397,16 @@ export function GameScene({ displayState, playerX, onTouchLeft, onTouchRight }: 
         style={{ position: 'absolute', top: 0, left: 0, right: 0, height: HORIZON_Y + 20 }}
       />
 
-      {/* Stars */}
       <Stars world={world} />
 
       {/* Horizon glow */}
       <View
         style={{
           position: 'absolute',
-          top: HORIZON_Y - 18,
+          top: HORIZON_Y - 16,
           left: 0,
           right: 0,
-          height: 36,
+          height: 32,
           backgroundColor: world.horizonGlow,
         }}
       />
@@ -401,13 +417,10 @@ export function GameScene({ displayState, playerX, onTouchLeft, onTouchRight }: 
         style={{ position: 'absolute', top: HORIZON_Y, left: 0, right: 0, bottom: 0 }}
       />
 
-      {/* Track perspective lines */}
       <TrackLines world={world} />
-
-      {/* Scrolling speed lines */}
       <SpeedLines scrollOffset={displayState.scrollOffset} world={world} />
 
-      {/* Crystals (render below obstacles) */}
+      {/* Crystals */}
       {displayState.crystalObjects.map((c) => (
         <CrystalView key={c.id} crystal={c} world={world} />
       ))}
@@ -418,12 +431,11 @@ export function GameScene({ displayState, playerX, onTouchLeft, onTouchRight }: 
       ))}
 
       {/* Player */}
-      <PlayerView playerX={playerX} invincible={displayState.invincible} world={world} />
+      <PlayerView playerX={playerX} boardTilt={boardTilt} jumpY={jumpY} world={world} />
 
       {/* Portal transition flash */}
       {displayState.showPortal && <PortalFlash key={displayState.worldIndex} world={world} />}
 
-      {/* Web padding */}
       {Platform.OS === 'web' && <View style={{ height: 34 }} />}
     </View>
   );

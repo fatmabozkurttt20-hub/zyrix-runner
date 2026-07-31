@@ -14,6 +14,11 @@ import { NeonButton } from '@/components/ui/NeonButton';
 import { usePlayer } from '@/context/PlayerContext';
 import colors from '@/constants/colors';
 
+function formatDistance(m: number): string {
+  if (m < 1000) return `${Math.floor(m)} m`;
+  return `${(m / 1000).toFixed(2)} km`;
+}
+
 interface StatRowProps {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -34,17 +39,21 @@ function StatRow({ icon, label, value, color }: StatRowProps) {
 }
 
 export default function GameOverScreen() {
-  const { score, crystals } = useLocalSearchParams<{ score: string; crystals: string }>();
+  const { score, crystals, distance } = useLocalSearchParams<{
+    score: string;
+    crystals: string;
+    distance: string;
+  }>();
   const { highScore } = usePlayer();
   const insets = useSafeAreaInsets();
 
   const finalScore = parseInt(score ?? '0', 10);
   const earnedCrystals = parseInt(crystals ?? '0', 10);
+  const finalDistance = parseInt(distance ?? '0', 10);
   const isNewRecord = finalScore >= highScore && finalScore > 0;
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
-  const scoreAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.sequence([
@@ -75,33 +84,40 @@ export default function GameOverScreen() {
           )}
         </View>
 
-        {/* Score display */}
+        {/* Distance — the headline number */}
         <View style={styles.scoreBlock}>
-          <Text style={styles.scoreNumber}>{finalScore.toLocaleString()}</Text>
-          <Text style={styles.scoreCaption}>SCORE</Text>
+          <Text style={styles.scoreNumber}>{formatDistance(finalDistance)}</Text>
+          <Text style={styles.scoreCaption}>DISTANCE</Text>
         </View>
 
         {/* Stats */}
         <View style={styles.statsCard}>
+          <StatRow
+            icon="speedometer"
+            label="Score"
+            value={finalScore.toLocaleString()}
+            color={colors.dark.foreground}
+          />
+          <View style={styles.statDivider} />
+          <StatRow
+            icon="diamond"
+            label="Crystals Collected"
+            value={`+${earnedCrystals}`}
+            color={colors.dark.primary}
+          />
+          <View style={styles.statDivider} />
           <StatRow
             icon="trophy"
             label="Best Score"
             value={highScore.toLocaleString()}
             color={colors.dark.crystal}
           />
-          <View style={styles.statDivider} />
-          <StatRow
-            icon="diamond"
-            label="Crystals Earned"
-            value={`+${earnedCrystals}`}
-            color={colors.dark.primary}
-          />
         </View>
 
         {/* Buttons */}
         <View style={styles.buttons}>
           <NeonButton
-            label="PLAY AGAIN"
+            label="RESTART"
             onPress={() => router.replace('/game')}
             color={colors.dark.primary}
             size="lg"
@@ -167,10 +183,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scoreNumber: {
-    fontSize: 64,
+    fontSize: 58,
     fontFamily: 'Inter_700Bold',
     color: colors.dark.primary,
-    letterSpacing: 4,
+    letterSpacing: 3,
     textShadowColor: colors.dark.primary,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 22,
@@ -180,7 +196,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     color: colors.dark.mutedForeground,
     letterSpacing: 5,
-    marginTop: -6,
+    marginTop: -4,
   },
   statsCard: {
     width: '100%',

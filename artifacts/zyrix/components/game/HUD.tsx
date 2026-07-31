@@ -2,7 +2,7 @@ import React from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { GAME_CONFIG, WORLDS } from '@/constants/game';
+import { WORLDS } from '@/constants/game';
 import { GameDisplayState } from '@/hooks/useGame';
 import colors from '@/constants/colors';
 
@@ -11,20 +11,9 @@ interface HUDProps {
   onPause: () => void;
 }
 
-function LivesDisplay({ lives }: { lives: number }) {
-  return (
-    <View style={styles.livesRow}>
-      {Array.from({ length: GAME_CONFIG.LIVES }).map((_, i) => (
-        <Ionicons
-          key={i}
-          name={i < lives ? 'heart' : 'heart-outline'}
-          size={18}
-          color={i < lives ? colors.dark.livesColor : colors.dark.mutedForeground}
-          style={{ marginRight: 3 }}
-        />
-      ))}
-    </View>
-  );
+export function formatDistance(m: number): string {
+  if (m < 1000) return `${Math.floor(m)}m`;
+  return `${(m / 1000).toFixed(1)}km`;
 }
 
 export function HUD({ displayState, onPause }: HUDProps) {
@@ -34,36 +23,28 @@ export function HUD({ displayState, onPause }: HUDProps) {
 
   return (
     <View style={[styles.container, { paddingTop: topPad + 8 }]} pointerEvents="box-none">
-      {/* Top row: Lives | Score | Pause */}
+      {/* Top row: distance | score | pause */}
       <View style={styles.topRow}>
-        {/* Lives */}
-        <LivesDisplay lives={displayState.lives} />
+        {/* Distance — the primary metric */}
+        <View style={styles.distanceBox}>
+          <Text style={[styles.distanceText, { color: world.trackColor }]}>
+            {formatDistance(displayState.distanceM)}
+          </Text>
+        </View>
 
         {/* Score */}
         <View style={styles.scoreBox}>
-          <Text style={styles.scoreText}>{displayState.score.toString().padStart(6, '0')}</Text>
+          <Text style={styles.scoreText}>{displayState.score.toLocaleString()}</Text>
         </View>
 
         {/* Pause */}
-        <TouchableOpacity style={styles.pauseBtn} onPress={onPause} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity
+          style={styles.pauseBtn}
+          onPress={onPause}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <Ionicons name="pause" size={20} color={colors.dark.foreground} />
         </TouchableOpacity>
-      </View>
-
-      {/* World name + progress bar */}
-      <View style={styles.worldRow}>
-        <Text style={[styles.worldName, { color: world.trackColor }]}>{world.name}</Text>
-        <View style={styles.progressTrack}>
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${Math.min(displayState.worldProgress * 100, 100)}%` as any,
-                backgroundColor: world.trackColor,
-              },
-            ]}
-          />
-        </View>
       </View>
 
       {/* Crystal counter */}
@@ -89,10 +70,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  livesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 64,
+  distanceBox: {
+    minWidth: 76,
+  },
+  distanceText: {
+    fontSize: 24,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0,229,255,0.6)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
   },
   scoreBox: {
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -104,7 +91,7 @@ const styles = StyleSheet.create({
   },
   scoreText: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: 'Inter_700Bold',
     letterSpacing: 2,
   },
@@ -119,38 +106,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
     minWidth: 36,
   },
-  worldRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-    gap: 8,
-  },
-  worldName: {
-    fontSize: 9,
-    fontFamily: 'Inter_600SemiBold',
-    letterSpacing: 2,
-    minWidth: 90,
-  },
-  progressTrack: {
-    flex: 1,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
   crystalRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 6,
+    marginTop: 8,
   },
   crystalText: {
     color: colors.dark.crystal,
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: 'Inter_600SemiBold',
   },
 });

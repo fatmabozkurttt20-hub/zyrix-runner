@@ -8,17 +8,31 @@ import { useGame } from '@/hooks/useGame';
 import { usePlayer } from '@/context/PlayerContext';
 
 export default function GameScreen() {
-  const { hapticsEnabled, addCrystals, updateHighScore, incrementRuns, selectedBoardId } = usePlayer();
-  const { displayState, playerX, startGame, pauseGame, resumeGame, handleTouch } = useGame(hapticsEnabled);
+  const { hapticsEnabled, addCrystals, updateHighScore, incrementRuns } = usePlayer();
+  const {
+    displayState,
+    playerX,
+    boardTilt,
+    jumpY,
+    startGame,
+    pauseGame,
+    resumeGame,
+    handleTouch,
+    handleJump,
+  } = useGame(hapticsEnabled);
 
   const handleGameOver = useCallback(
-    (score: number, crystals: number) => {
+    (score: number, crystals: number, distance: number) => {
       updateHighScore(score);
       addCrystals(crystals);
       incrementRuns();
       router.replace({
         pathname: '/gameover',
-        params: { score: String(score), crystals: String(crystals) },
+        params: {
+          score: String(score),
+          crystals: String(crystals),
+          distance: String(distance),
+        },
       });
     },
     [updateHighScore, addCrystals, incrementRuns]
@@ -37,16 +51,19 @@ export default function GameScreen() {
     startGame(0, handleGameOver);
   }, []); // intentionally run once on mount
 
-  const onTouchLeft = useCallback(() => handleTouch('left'), [handleTouch]);
-  const onTouchRight = useCallback(() => handleTouch('right'), [handleTouch]);
+  const onSwipeLeft = useCallback(() => handleTouch('left'), [handleTouch]);
+  const onSwipeRight = useCallback(() => handleTouch('right'), [handleTouch]);
 
   return (
     <View style={StyleSheet.absoluteFill}>
       <GameScene
         displayState={displayState}
         playerX={playerX}
-        onTouchLeft={onTouchLeft}
-        onTouchRight={onTouchRight}
+        boardTilt={boardTilt}
+        jumpY={jumpY}
+        onSwipeLeft={onSwipeLeft}
+        onSwipeRight={onSwipeRight}
+        onSwipeUp={handleJump}
       />
 
       <HUD displayState={displayState} onPause={pauseGame} />
