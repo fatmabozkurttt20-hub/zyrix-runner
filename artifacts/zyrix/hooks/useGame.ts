@@ -51,6 +51,10 @@ interface GameRef {
   portal30: number;
   jumping: boolean;
   jumpTimer: number;
+  /** Lane the board is visually sliding away from (during lane-change anim). */
+  laneChangeFrom: 0 | 1 | 2;
+  /** Remaining ms of the lane-change slide animation; 0 = settled. */
+  laneChangeTimer: number;
   lastTs: number;
   idCounter: number;
 }
@@ -79,6 +83,8 @@ function makeGameRef(): GameRef {
     portal30: -1,
     jumping: false,
     jumpTimer: 0,
+    laneChangeFrom: 1,
+    laneChangeTimer: 0,
     lastTs: 0,
     idCounter: 0,
   };
@@ -227,6 +233,18 @@ export interface GameSounds {
   jump?: () => void;
 }
 
+/**
+ * Lane the board is visually closer to right now. The slide animation uses
+ * Easing.out(Easing.cubic), so mirror that curve here: eased = 1 - (1-t)^3.
+ * The board crosses the visual midpoint when eased >= 0.5.
+ */
+function visualLane(g: GameRef): 0 | 1 | 2 {
+  if (g.laneChangeTimer <= 0) return g.playerLane;
+  const t = 1 - g.laneChangeTimer / GAME_CONFIG.LANE_CHANGE_MS; // linear 0 → 1
+  const eased = 1 - Math.pow(1 - t, 3); // matches Easing.out(Easing.cubic)
+  return eased < 0.5 ? g.laneChangeFrom : g.playerLane;
+}
+
 // ─── Core Tick Function ───────────────────────────────────────────────────────
 function tick(
   g: GameRef,
@@ -261,12 +279,18 @@ function tick(
     if (g.jumpTimer <= 0) g.jumping = false;
   }
 
+  // 4b. Lane-change animation timer — while the board is visually sliding
+  // between lanes, collide against the lane the board is *closer to* on
+  // screen, so a death never happens in a lane the board hasn't reached.
+  if (g.laneChangeTimer > 0) g.laneChangeTimer = Math.max(0, g.laneChangeTimer - dt);
+  const collisionLane = visualLane(g);
+
   // 5. Collision detection — one hit = instant death (skipped mid-jump)
   for (const o of g.obstacles) {
     if (
       !g.jumping &&
       !o.hit &&
-      o.lane === g.playerLane &&
+      o.lane === collisionLane &&
       o.progress >= GAME_CONFIG.COLLISION_NEAR &&
       o.progress <= GAME_CONFIG.COLLISION_FAR
     ) {
@@ -482,6 +506,13 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
       if (side === 'left' && current > 0) next = (current - 1) as 0 | 1 | 2;
       else if (side === 'right' && current < 2) next = (current + 1) as 0 | 1 | 2;
       else return;
+
+      // Gate collision on the visual slide: remember where the board is
+      // *visually* coming from (handles interrupted mid-slide swipes) and
+      // how long the slide lasts (consumed in tick()).
+      g.playerLane = current; // ensure visualLane() sees the latest target
+      g.laneChangeFrom = visualLane(g);
+      g.laneChangeTimer = GAME_CONFIG.LANE_CHANGE_MS;
 
       playerLaneRef.current = next;
 
