@@ -24,7 +24,7 @@ import {
   WORLDS,
   World,
 } from '@/constants/game';
-import { GameDisplayState, SpawnedObstacle, SpawnedCrystal, SpawnedOrb } from '@/hooks/useGame';
+import { GameDisplayState, SpawnedObstacle, SpawnedCrystal, SpawnedOrb, COUNTDOWN_STEP_MS } from '@/hooks/useGame';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BOARD_W = GAME_CONFIG.PLAYER_W;
@@ -1233,35 +1233,27 @@ function Portal30({ progress, world }: { progress: number; world: World }) {
 // ─── Cinematic Countdown: 3 · 2 · 1 · GO ─────────────────────────────────────
 const COUNT_STEPS = ['3', '2', '1', 'GO'];
 
-function Countdown({ runKey, world }: { runKey: number; world: World }) {
-  const [idx, setIdx] = useState(0);
-  const [done, setDone] = useState(false);
-  const pop = useRef(new Animated.Value(0)).current;
+// Driven by the engine clock (displayState.countdownMs / elapsedMs), so
+// "GO" appears on the exact frame the frozen world starts moving — no
+// separate timer that could drift from the game loop.
+function Countdown({ countdownMs, elapsedMs, world }: { countdownMs: number; elapsedMs: number; world: World }) {
+  // 3 → 2 → 1 while frozen; GO for the first 540ms of live gameplay
+  const step = countdownMs > 0 ? 3 - Math.ceil(countdownMs / COUNTDOWN_STEP_MS) : 3;
+  const done = countdownMs <= 0 && elapsedMs > COUNTDOWN_STEP_MS;
 
+  const pop = useRef(new Animated.Value(0)).current;
+  const prevStepRef = useRef(-1);
   useEffect(() => {
-    setDone(false);
-    setIdx(0);
-    let i = 0;
-    const show = () => {
+    if (done) return;
+    if (step !== prevStepRef.current) {
+      prevStepRef.current = step;
       pop.setValue(0);
       Animated.timing(pop, { toValue: 1, duration: 430, useNativeDriver: true, easing: Easing.out(Easing.cubic) }).start();
-    };
-    show();
-    const t = setInterval(() => {
-      i++;
-      if (i >= COUNT_STEPS.length) {
-        clearInterval(t);
-        setDone(true);
-        return;
-      }
-      setIdx(i);
-      show();
-    }, 540);
-    return () => clearInterval(t);
-  }, [runKey, pop]);
+    }
+  }, [step, done, pop]);
 
   if (done) return null;
-  const isGo = idx === 3;
+  const isGo = step === 3;
   return (
     <View pointerEvents="none" style={{ position: 'absolute', top: HORIZON_Y + 44, left: 0, right: 0, alignItems: 'center' }}>
       <Animated.Text
@@ -1277,7 +1269,7 @@ function Countdown({ runKey, world }: { runKey: number; world: World }) {
           transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [1.7, 1] }) }],
         }}
       >
-        {COUNT_STEPS[idx]}
+        {COUNT_STEPS[step]}
       </Animated.Text>
     </View>
   );
@@ -1652,16 +1644,18 @@ export function GameScene({
 
   // ── Per-run key: increments whenever the run clock resets (restart) ──
   const [runKey, setRunKey] = useState(0);
-  const prevElapsedRef = useRef(0);
+  const prevRunIdRef = useRef(0);
   useEffect(() => {
-    if (displayState.elapsedMs + 500 < prevElapsedRef.current) {
+    // runId is monotonic and bumps on every startGame — catches restarts
+    // even during the pre-start countdown (when elapsedMs never moved).
+    if (displayState.runId !== prevRunIdRef.current) {
+      prevRunIdRef.current = displayState.runId;
       setRunKey((k) => k + 1);
       setP30Flash(false);
       prevP30Ref.current = -1;
       airborneRef.current = false; // no phantom landing bounce on restart
     }
-    prevElapsedRef.current = displayState.elapsedMs;
-  }, [displayState.elapsedMs]);
+  }, [displayState.runId]);
 
   // ── Cinematic intro (replays each run) ──
   const { introScale, introShiftY, dropY, beamT } = useIntroCinematic(runKey);
@@ -2027,7 +2021,7 @@ export function GameScene({
       {odKey > 0 && <OverdriveTitle key={odKey} />}
 
       {/* Cinematic countdown */}
-      <Countdown runKey={runKey} world={world} />
+      <Countdown countdownMs={displayState.countdownMs} elapsedMs={displayState.elapsedMs} world={world} />
 
       {Platform.OS === 'web' && <View style={{ height: 34 }} />}
     </View>

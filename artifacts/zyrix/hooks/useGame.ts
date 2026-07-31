@@ -32,6 +32,14 @@ export interface SpawnedOrb {
   collected: boolean;
 }
 
+/**
+ * Pre-start countdown: 3 · 2 · 1 (540ms each), then GO = the exact frame
+ * gameplay begins. While counting down the world is fully frozen — no
+ * movement, score, distance, spawns, collisions, or inputs.
+ */
+export const COUNTDOWN_STEP_MS = 540;
+export const COUNTDOWN_MS = COUNTDOWN_STEP_MS * 3;
+
 // ─── Overdrive tuning ─────────────────────────────────────────────────────────
 const OVERDRIVE = {
   ORBS_TO_FILL: 3,
@@ -61,6 +69,10 @@ interface GameRef {
   scrollOffset: number;
   showPortal: boolean;
   portalTimer: number;
+  /** Monotonic run counter — increments on every startGame (restart-safe). */
+  runId: number;
+  /** Remaining pre-start countdown in ms; 0 = gameplay live. */
+  countdownMs: number;
   /** Total run time in ms — drives scripted first-30s set pieces (visual only). */
   elapsedMs: number;
   /** Visual-only 30s portal: -1 = not started, 0..1.3 = approach progress. */
@@ -111,6 +123,8 @@ function makeGameRef(): GameRef {
     overdriveBoost: 0,
     showPortal: false,
     portalTimer: 0,
+    runId: 0,
+    countdownMs: COUNTDOWN_MS,
     elapsedMs: 0,
     portal30: -1,
     jumping: false,
@@ -136,6 +150,10 @@ export interface GameDisplayState {
   scrollOffset: number;
   /** Current forward speed — read-only, used for visual effects only. */
   speed: number;
+  /** Monotonic run counter — changes on every startGame, incl. restarts. */
+  runId: number;
+  /** Remaining pre-start countdown in ms; 0 = gameplay live. */
+  countdownMs: number;
   /** Run time in ms — read-only, drives scripted visual set pieces. */
   elapsedMs: number;
   /** Visual-only 30s portal approach: -1 inactive, 0..1.3 approaching/past. */
@@ -162,6 +180,8 @@ function makeDisplayState(): GameDisplayState {
     showPortal: false,
     scrollOffset: 0,
     speed: GAME_CONFIG.INITIAL_SPEED,
+    runId: 0,
+    countdownMs: COUNTDOWN_MS,
     elapsedMs: 0,
     portal30: -1,
     overdriveMeter: 0,
@@ -293,6 +313,14 @@ function tick(
   sounds: GameSounds,
   onGameOver: (score: number, crystals: number, distance: number) => void
 ): boolean {
+  // Pre-start countdown: the entire world is frozen until it reaches 0.
+  // Only the countdown clock advances — no movement, score, distance,
+  // speed ramp, spawn timers, collisions, or Overdrive progression.
+  if (g.countdownMs > 0) {
+    g.countdownMs = Math.max(0, g.countdownMs - dt);
+    return true;
+  }
+
   // 0. Run clock + visual-only 30s portal
   g.elapsedMs += dt;
   if (g.portal30 === -1 && g.elapsedMs >= 30000) g.portal30 = 0;
@@ -488,6 +516,8 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
       showPortal: g.showPortal,
       scrollOffset: g.scrollOffset,
       speed: g.speed,
+      runId: g.runId,
+      countdownMs: g.countdownMs,
       elapsedMs: g.elapsedMs,
       portal30: g.portal30,
       overdriveMeter: g.overdriveMeter,
@@ -554,6 +584,7 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
       gameOverCallbackRef.current = onGameOver ?? null;
 
       const g = makeGameRef();
+      g.runId = gameRef.current.runId + 1; // monotonic across restarts
       g.running = true;
       g.worldIndex = worldIndex;
       // Cinematic opening: hold the first obstacle back slightly so the
@@ -596,7 +627,7 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
   const handleTouch = useCallback(
     (side: 'left' | 'right') => {
       const g = gameRef.current;
-      if (!g.running || g.paused || g.gameOver) return;
+      if (!g.running || g.paused || g.gameOver || g.countdownMs > 0) return;
 
       const current = playerLaneRef.current;
       let next = current;
@@ -666,7 +697,7 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
    */
   const handleJump = useCallback(() => {
     const g = gameRef.current;
-    if (!g.running || g.paused || g.gameOver || g.jumping) return;
+    if (!g.running || g.paused || g.gameOver || g.jumping || g.countdownMs > 0) return;
 
     // The game loop drives the jump arc (see startLoop) so that pause
     // freezes both the visual position and the collision immunity.
