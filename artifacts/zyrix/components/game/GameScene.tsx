@@ -1442,6 +1442,7 @@ export function GameScene({
       setRunKey((k) => k + 1);
       setP30Flash(false);
       prevP30Ref.current = -1;
+      airborneRef.current = false; // no phantom landing bounce on restart
     }
     prevElapsedRef.current = displayState.elapsedMs;
   }, [displayState.elapsedMs]);
@@ -1488,7 +1489,47 @@ export function GameScene({
         )
       )
   );
-  const fovScale = 1 + speedStep * 0.008; // up to +6.4% zoom at max speed
+  // Eased so speed-step changes glide instead of snapping (premium feel)
+  const fovAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    fovAnim.stopAnimation();
+    Animated.timing(fovAnim, {
+      toValue: 1 + speedStep * 0.008, // up to +6.4% zoom at max speed
+      duration: 700,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [speedStep, fovAnim]);
+
+  // ── Camera tilt: subtle counter-bank while changing lanes (visual only) ──
+  const camTilt = useRef(
+    boardTilt.interpolate({
+      inputRange: [-22, 0, 22],
+      outputRange: ['0.8deg', '0deg', '-0.8deg'],
+    })
+  ).current;
+
+  // ── Vertical follow + landing bounce ──
+  // The camera softly trails the jump arc (world sinks a touch as the rider
+  // rises) and lands with a small damped bounce when the board touches down.
+  const camFollowY = useRef(Animated.multiply(jumpY, -0.07)).current;
+  const camBounce = useRef(new Animated.Value(0)).current;
+  const airborneRef = useRef(false);
+  useEffect(() => {
+    const sub = jumpY.addListener(({ value }) => {
+      if (value < -8) {
+        airborneRef.current = true;
+      } else if (airborneRef.current && value > -0.5) {
+        airborneRef.current = false;
+        Animated.sequence([
+          Animated.timing(camBounce, { toValue: 5, duration: 90, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(camBounce, { toValue: -2, duration: 110, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+          Animated.timing(camBounce, { toValue: 0, duration: 130, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        ]).start();
+      }
+    });
+    return () => jumpY.removeListener(sub);
+  }, [jumpY, camBounce]);
 
   // ── Screen shake on collision ──
   const shakeX = useRef(new Animated.Value(0)).current;
@@ -1620,10 +1661,16 @@ export function GameScene({
             transform: [
               { translateX: Animated.add(camPan, shakeX) },
               { translateX: swayPx },
-              { translateY: Animated.add(shakeY, Animated.multiply(rumble, rumbleAmp)) },
+              {
+                translateY: Animated.add(
+                  Animated.add(shakeY, Animated.multiply(rumble, rumbleAmp)),
+                  Animated.add(camFollowY, camBounce)
+                ),
+              },
               { translateY: introShiftY },
-              { scale: fovScale },
+              { scale: fovAnim },
               { scale: introScale },
+              { rotate: camTilt },
               { rotate: `${(swayPx * 0.06).toFixed(2)}deg` },
             ],
           },
