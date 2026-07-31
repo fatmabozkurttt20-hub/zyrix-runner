@@ -90,6 +90,8 @@ export interface GameDisplayState {
   worldProgress: number;
   showPortal: boolean;
   scrollOffset: number;
+  /** Current forward speed — read-only, used for visual effects only. */
+  speed: number;
   obstacles: SpawnedObstacle[];
   crystalObjects: SpawnedCrystal[];
 }
@@ -106,6 +108,7 @@ function makeDisplayState(): GameDisplayState {
     worldProgress: 0,
     showPortal: false,
     scrollOffset: 0,
+    speed: GAME_CONFIG.INITIAL_SPEED,
     obstacles: [],
     crystalObjects: [],
   };
@@ -308,6 +311,7 @@ export function useGame(hapticsEnabled = true) {
       worldProgress: (g.score % GAME_CONFIG.WORLD_SCORE_INTERVAL) / GAME_CONFIG.WORLD_SCORE_INTERVAL,
       showPortal: g.showPortal,
       scrollOffset: g.scrollOffset,
+      speed: g.speed,
       obstacles: [...g.obstacles],
       crystalObjects: [...g.crystalObjects],
     });

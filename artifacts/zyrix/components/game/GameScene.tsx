@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Line } from 'react-native-svg';
+import Svg, { Line, Path, Circle, Ellipse } from 'react-native-svg';
 import {
   SCREEN_W,
   HORIZON_Y,
@@ -167,16 +167,120 @@ function CrystalView({ crystal, world }: { crystal: SpawnedCrystal; world: World
   );
 }
 
-// ─── Player View ──────────────────────────────────────────────────────────────
-function PlayerView({
+// ─── Player View: ZYRIX mascot rider + anti-grav hoverboard ──────────────────
+const NEON = '#22E5FF';
+const NEON_DIM = 'rgba(34,229,255,0.45)';
+const SUIT_DARK = '#0B0B12';
+const SUIT_GRAY = '#23232E';
+const HOVER_GAP = 15; // "15 cm" — visual gap between board and ground
+
+const RIDER_H = BOARD_W * 1.0;
+const RIDER_W = BOARD_W * 0.82;
+
+/** Mysterious gender-neutral rider seen from behind — black/gray suit,
+ *  cyan neon seams, half-face visor helmet, glowing energy core on back. */
+const RiderFigure = React.memo(() => (
+  <Svg
+    width={RIDER_W}
+    height={RIDER_H}
+    viewBox="0 0 100 122"
+    style={{ position: 'absolute', bottom: BOARD_H - 3, left: (BOARD_W - RIDER_W) / 2 }}
+  >
+    {/* Legs — wide riding stance */}
+    <Path d="M42 64 Q37 84 28 98 L24 114 L39 116 L43 100 Q49 86 50 70 Z" fill={SUIT_DARK} />
+    <Path d="M58 64 Q63 84 72 98 L76 114 L61 116 L57 100 Q51 86 50 70 Z" fill={SUIT_DARK} />
+    {/* Boots */}
+    <Path d="M21 111 L41 113 L40 121 L20 119 Z" fill={SUIT_GRAY} />
+    <Path d="M79 111 L59 113 L60 121 L80 119 Z" fill={SUIT_GRAY} />
+    {/* Neon leg seams */}
+    <Path d="M43 68 Q38 86 30 102" stroke={NEON} strokeWidth="1.8" fill="none" opacity="0.9" />
+    <Path d="M57 68 Q62 86 70 102" stroke={NEON} strokeWidth="1.8" fill="none" opacity="0.9" />
+    {/* Arms — out for balance */}
+    <Path d="M37 30 Q21 37 10 49 L16 58 Q28 47 41 43 Z" fill={SUIT_GRAY} />
+    <Path d="M63 30 Q79 37 90 49 L84 58 Q72 47 59 43 Z" fill={SUIT_GRAY} />
+    {/* Gloves */}
+    <Circle cx="13" cy="53" r="4.4" fill={SUIT_DARK} />
+    <Circle cx="87" cy="53" r="4.4" fill={SUIT_DARK} />
+    {/* Neon arm seams */}
+    <Path d="M38 36 Q25 42 16 52" stroke={NEON} strokeWidth="1.4" fill="none" opacity="0.85" />
+    <Path d="M62 36 Q75 42 84 52" stroke={NEON} strokeWidth="1.4" fill="none" opacity="0.85" />
+    {/* Torso — slight forward lean */}
+    <Path d="M37 28 Q50 23 63 28 L61 62 Q50 68 39 62 Z" fill={SUIT_DARK} stroke={SUIT_GRAY} strokeWidth="1.5" />
+    {/* Neon spine + shoulder lines */}
+    <Path d="M50 30 L50 62" stroke={NEON} strokeWidth="1.6" opacity="0.9" />
+    <Path d="M39 33 L61 33" stroke={NEON} strokeWidth="1.2" opacity="0.7" />
+    <Path d="M41 58 L59 58" stroke={NEON} strokeWidth="1.2" opacity="0.7" />
+    {/* Energy core on back */}
+    <Circle cx="50" cy="43" r="9" fill={NEON} opacity="0.18" />
+    <Circle cx="50" cy="43" r="5.5" fill={NEON} opacity="0.5" />
+    <Circle cx="50" cy="43" r="3" fill="#CFFAFF" />
+    {/* Helmet */}
+    <Circle cx="50" cy="14" r="11" fill={SUIT_DARK} stroke={SUIT_GRAY} strokeWidth="1.5" />
+    {/* Half-face visor band, glimpsed from behind */}
+    <Path d="M39.5 12.5 Q50 6.5 60.5 12.5" stroke={NEON} strokeWidth="2.4" fill="none" opacity="0.95" />
+    <Path d="M40 16 Q50 11 60 16" stroke={NEON_DIM} strokeWidth="1.2" fill="none" />
+    {/* Neck */}
+    <Path d="M46 23 L54 23 L53 28 L47 28 Z" fill={SUIT_GRAY} />
+  </Svg>
+));
+
+/** Futuristic anti-grav board with cyan energy rings underneath. */
+const BoardBody = React.memo(() => (
+  <>
+    <Svg
+      width={BOARD_W}
+      height={BOARD_H + HOVER_GAP + 14}
+      viewBox={`0 0 ${BOARD_W} ${BOARD_H + HOVER_GAP + 14}`}
+      style={{ position: 'absolute', top: 0, left: 0 }}
+    >
+      {/* Deck — tapered nose/tail */}
+      <Path
+        d={`M${BOARD_W * 0.04} ${BOARD_H * 0.55}
+            Q${BOARD_W * 0.02} ${BOARD_H * 0.18} ${BOARD_W * 0.18} ${BOARD_H * 0.12}
+            L${BOARD_W * 0.82} ${BOARD_H * 0.12}
+            Q${BOARD_W * 0.98} ${BOARD_H * 0.18} ${BOARD_W * 0.96} ${BOARD_H * 0.55}
+            Q${BOARD_W * 0.94} ${BOARD_H * 0.92} ${BOARD_W * 0.78} ${BOARD_H * 0.95}
+            L${BOARD_W * 0.22} ${BOARD_H * 0.95}
+            Q${BOARD_W * 0.06} ${BOARD_H * 0.92} ${BOARD_W * 0.04} ${BOARD_H * 0.55} Z`}
+        fill="#0C0C1A"
+        stroke={NEON}
+        strokeWidth="2"
+      />
+      {/* Deck top glow strip */}
+      <Path
+        d={`M${BOARD_W * 0.16} ${BOARD_H * 0.3} L${BOARD_W * 0.84} ${BOARD_H * 0.3}`}
+        stroke={NEON}
+        strokeWidth="2.5"
+        opacity="0.85"
+        strokeLinecap="round"
+      />
+      {/* Center emblem line */}
+      <Path
+        d={`M${BOARD_W * 0.28} ${BOARD_H * 0.62} L${BOARD_W * 0.72} ${BOARD_H * 0.62}`}
+        stroke={NEON_DIM}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      {/* Energy rings underneath (anti-grav field) */}
+      <Ellipse cx={BOARD_W / 2} cy={BOARD_H + HOVER_GAP * 0.4} rx={BOARD_W * 0.30} ry={4.2} stroke={NEON} strokeWidth="1.8" fill="none" opacity="0.8" />
+      <Ellipse cx={BOARD_W / 2} cy={BOARD_H + HOVER_GAP * 0.78} rx={BOARD_W * 0.40} ry={5.2} stroke={NEON} strokeWidth="1.4" fill="none" opacity="0.45" />
+      <Ellipse cx={BOARD_W / 2} cy={BOARD_H + HOVER_GAP + 4} rx={BOARD_W * 0.48} ry={6} stroke={NEON} strokeWidth="1" fill="none" opacity="0.2" />
+    </Svg>
+  </>
+));
+
+const PlayerView = React.memo(function PlayerView({
   playerX,
   boardTilt,
   jumpY,
+  forwardTiltDeg,
   world,
 }: {
   playerX: Animated.Value;
   boardTilt: Animated.Value;
   jumpY: Animated.Value;
+  /** Quantized (whole degrees) so this component only re-renders on step changes. */
+  forwardTiltDeg: number;
   world: World;
 }) {
   const hoverY = useRef(new Animated.Value(0)).current;
@@ -189,6 +293,8 @@ function PlayerView({
       outputRange: ['-30deg', '0deg', '30deg'],
     })
   ).current;
+
+  const forwardTilt = `${forwardTiltDeg}deg`;
 
   useEffect(() => {
     const anim = Animated.loop(
@@ -223,67 +329,54 @@ function PlayerView({
           { translateX },
           { translateY: Animated.add(hoverY, jumpY) },
           { rotate: tiltDeg },
+          { perspective: 600 },
+          { rotateX: forwardTilt },
         ],
       }}
     >
-      {/* Thruster glow */}
+      {/* Neon energy trail (fades toward the viewer, behind the board) */}
       <Animated.View
+        pointerEvents="none"
         style={{
           position: 'absolute',
-          bottom: -14,
-          left: BOARD_W * 0.12,
-          right: BOARD_W * 0.12,
-          height: 14,
-          borderRadius: 7,
-          backgroundColor: world.trackColor,
-          opacity: glowOpacity,
-          shadowColor: world.trackColor,
-          shadowOffset: { width: 0, height: 6 },
-          shadowRadius: 22,
+          top: BOARD_H + HOVER_GAP + 2,
+          left: BOARD_W * 0.28,
+          width: BOARD_W * 0.44,
+          height: 58,
+          opacity: Animated.multiply(glowOpacity, 0.5),
+        }}
+      >
+        <LinearGradient
+          colors={[NEON, 'rgba(34,229,255,0)']}
+          style={{ flex: 1, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 }}
+        />
+      </Animated.View>
+
+      {/* Anti-grav under-glow on the ground */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: BOARD_H + HOVER_GAP - 2,
+          left: BOARD_W * 0.08,
+          right: BOARD_W * 0.08,
+          height: 10,
+          borderRadius: 5,
+          backgroundColor: NEON,
+          opacity: Animated.multiply(glowOpacity, 0.55),
+          shadowColor: NEON,
+          shadowOffset: { width: 0, height: 4 },
+          shadowRadius: 18,
           shadowOpacity: 1,
-          elevation: 14,
+          elevation: 12,
         }}
       />
-      {/* Board body */}
-      <View
-        style={{
-          position: 'absolute',
-          left: 0, top: 0, right: 0, bottom: 0,
-          borderRadius: 10,
-          backgroundColor: '#0C0C20',
-          borderWidth: 2,
-          borderColor: world.trackColor,
-        }}
-      />
-      {/* Accent stripe */}
-      <View
-        style={{
-          position: 'absolute',
-          left: BOARD_W * 0.20,
-          right: BOARD_W * 0.20,
-          top: BOARD_H * 0.32,
-          height: BOARD_H * 0.36,
-          backgroundColor: world.accentColor,
-          opacity: 0.6,
-          borderRadius: 3,
-        }}
-      />
-      {/* Rider silhouette */}
-      <View
-        style={{
-          position: 'absolute',
-          left: BOARD_W * 0.36,
-          bottom: BOARD_H + 1,
-          width: BOARD_W * 0.28,
-          height: BOARD_W * 0.38,
-          backgroundColor: '#EEEEFF',
-          borderRadius: BOARD_W * 0.14,
-          opacity: 0.9,
-        }}
-      />
+
+      <BoardBody />
+      <RiderFigure />
     </Animated.View>
   );
-}
+});
 
 // ─── Portal Flash ─────────────────────────────────────────────────────────────
 function PortalFlash({ world }: { world: World }) {
@@ -431,7 +524,23 @@ export function GameScene({
       ))}
 
       {/* Player */}
-      <PlayerView playerX={playerX} boardTilt={boardTilt} jumpY={jumpY} world={world} />
+      <PlayerView
+        playerX={playerX}
+        boardTilt={boardTilt}
+        jumpY={jumpY}
+        forwardTiltDeg={Math.round(
+          14 *
+            Math.max(
+              0,
+              Math.min(
+                1,
+                (displayState.speed - GAME_CONFIG.INITIAL_SPEED) /
+                  (GAME_CONFIG.MAX_SPEED - GAME_CONFIG.INITIAL_SPEED)
+              )
+            )
+        )}
+        world={world}
+      />
 
       {/* Portal transition flash */}
       {displayState.showPortal && <PortalFlash key={displayState.worldIndex} world={world} />}
