@@ -185,11 +185,20 @@ function spawnCrystals(g: GameRef) {
   }
 }
 
+// ─── Audio Event Hooks ────────────────────────────────────────────────────────
+export interface GameSounds {
+  pickup?: () => void;
+  crash?: () => void;
+  swipe?: () => void;
+  jump?: () => void;
+}
+
 // ─── Core Tick Function ───────────────────────────────────────────────────────
 function tick(
   g: GameRef,
   dt: number,
   haptics: boolean,
+  sounds: GameSounds,
   onGameOver: (score: number, crystals: number, distance: number) => void
 ): boolean {
   // 1. Speed ramp
@@ -223,6 +232,7 @@ function tick(
       o.hit = true;
       g.running = false;
       g.gameOver = true;
+      sounds.crash?.();
       if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       onGameOver(Math.floor(g.score), g.sessionCrystals, Math.floor(g.distanceM));
       return false;
@@ -240,6 +250,7 @@ function tick(
       c.collected = true;
       g.sessionCrystals++;
       g.score += GAME_CONFIG.CRYSTAL_SCORE;
+      sounds.pickup?.();
       if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   }
@@ -285,8 +296,11 @@ function tick(
 }
 
 // ─── useGame Hook ─────────────────────────────────────────────────────────────
-export function useGame(hapticsEnabled = true) {
+export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
   const gameRef = useRef<GameRef>(makeGameRef());
+  // Ref so audio callbacks never destabilize game-loop callbacks
+  const soundsRef = useRef<GameSounds>(sounds);
+  soundsRef.current = sounds;
   const [displayState, setDisplayState] = useState<GameDisplayState>(makeDisplayState());
 
   // Stable animated values
@@ -347,7 +361,7 @@ export function useGame(hapticsEnabled = true) {
       gCurrent.lastTs = now;
       gCurrent.playerLane = playerLaneRef.current;
 
-      const keepGoing = tick(gCurrent, dt, hapticsEnabled, onGameOverCallback);
+      const keepGoing = tick(gCurrent, dt, hapticsEnabled, soundsRef.current, onGameOverCallback);
 
       // Drive the jump arc from the game clock so pausing freezes the
       // visual and the collision immunity together (no desync).
@@ -466,6 +480,7 @@ export function useGame(hapticsEnabled = true) {
       });
       cameraAnimRef.current.start();
 
+      soundsRef.current.swipe?.();
       if (hapticsEnabled) Haptics.selectionAsync();
     },
     [playerX, boardTilt, cameraX, hapticsEnabled]
@@ -483,6 +498,7 @@ export function useGame(hapticsEnabled = true) {
     g.jumping = true;
     g.jumpTimer = GAME_CONFIG.JUMP_MS;
 
+    soundsRef.current.jump?.();
     if (hapticsEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, [hapticsEnabled]);
 

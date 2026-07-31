@@ -5,10 +5,12 @@ import { GameScene } from '@/components/game/GameScene';
 import { HUD } from '@/components/game/HUD';
 import { PauseOverlay } from '@/components/game/PauseOverlay';
 import { useGame } from '@/hooks/useGame';
+import { useGameAudio } from '@/hooks/useGameAudio';
 import { usePlayer } from '@/context/PlayerContext';
 
 export default function GameScreen() {
-  const { hapticsEnabled, addCrystals, updateHighScore, incrementRuns } = usePlayer();
+  const { hapticsEnabled, soundEnabled, addCrystals, updateHighScore, incrementRuns } = usePlayer();
+  const audio = useGameAudio(soundEnabled);
   const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cancel any pending game-over navigation if the screen unmounts
@@ -29,10 +31,16 @@ export default function GameScreen() {
     resumeGame,
     handleTouch,
     handleJump,
-  } = useGame(hapticsEnabled);
+  } = useGame(hapticsEnabled, {
+    pickup: () => audio.playSfx('pickup'),
+    crash: () => audio.playSfx('crash'),
+    swipe: () => audio.playSfx('swipe'),
+    jump: () => audio.playSfx('jump'),
+  });
 
   const handleGameOver = useCallback(
     (score: number, crystals: number, distance: number) => {
+      audio.stopMusic();
       updateHighScore(score);
       addCrystals(crystals);
       incrementRuns();
@@ -54,15 +62,28 @@ export default function GameScreen() {
 
   const handleRestart = useCallback(() => {
     startGame(0, handleGameOver);
-  }, [startGame, handleGameOver]);
+    audio.startMusic();
+  }, [startGame, handleGameOver, audio]);
 
   const handleQuit = useCallback(() => {
+    audio.stopMusic();
     router.replace('/menu');
-  }, []);
+  }, [audio]);
+
+  const handlePause = useCallback(() => {
+    pauseGame();
+    audio.pauseMusic();
+  }, [pauseGame, audio]);
+
+  const handleResume = useCallback(() => {
+    resumeGame();
+    audio.resumeMusic();
+  }, [resumeGame, audio]);
 
   // Start game when screen mounts
   useEffect(() => {
     startGame(0, handleGameOver);
+    audio.startMusic();
   }, []); // intentionally run once on mount
 
   const onSwipeLeft = useCallback(() => handleTouch('left'), [handleTouch]);
@@ -81,11 +102,11 @@ export default function GameScreen() {
         onSwipeUp={handleJump}
       />
 
-      <HUD displayState={displayState} onPause={pauseGame} />
+      <HUD displayState={displayState} onPause={handlePause} />
 
       {displayState.paused && (
         <PauseOverlay
-          onResume={resumeGame}
+          onResume={handleResume}
           onRestart={handleRestart}
           onQuit={handleQuit}
         />

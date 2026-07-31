@@ -1,0 +1,32 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "PZ7y8r5g_Eel_EqXJ_6_Q"
+uri = "file://artifacts/zyrix/assets/audio/crash.mp3"
+type = "audio"
+title = "crash"
+
+[[outputs]]
+id = "EnWWzG1FxDybPmT8v3h6J"
+uri = "file://artifacts/zyrix/assets/audio/pickup.mp3"
+type = "audio"
+title = "crystal pickup"
+
+[[outputs]]
+id = "dJTqaF1iQmkPH58tzXerU"
+uri = "file://artifacts/zyrix/assets/audio/jump.mp3"
+type = "audio"
+title = "jump"
+
+[[outputs]]
+id = "0coZFLO1CQFjV8RD586ey"
+uri = "file://artifacts/zyrix/assets/audio/swipe.mp3"
+type = "audio"
+title = "lane swipe"
+
+[[outputs]]
+id = "ZeZlqMeMaYCZWrs4bwD1s"
+uri = "file://artifacts/zyrix/assets/audio/music_loop.mp3"
+type = "audio"
+title = "zyrix synthwave loop"
