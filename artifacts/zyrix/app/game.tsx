@@ -6,6 +6,7 @@ import { HUD } from '@/components/game/HUD';
 import { PauseOverlay } from '@/components/game/PauseOverlay';
 import { useGame } from '@/hooks/useGame';
 import { useGameAudio } from '@/hooks/useGameAudio';
+import { stopMenuMusicNow } from '@/hooks/useMenuAudio';
 import { usePlayer } from '@/context/PlayerContext';
 
 export default function GameScreen() {
@@ -13,6 +14,11 @@ export default function GameScreen() {
     usePlayer();
   const audio = useGameAudio(soundEnabled);
   const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clean handoff: silence the ambient menu loop before gameplay music starts
+  useEffect(() => {
+    stopMenuMusicNow();
+  }, []);
 
   // Cancel any pending game-over navigation if the screen unmounts
   useEffect(

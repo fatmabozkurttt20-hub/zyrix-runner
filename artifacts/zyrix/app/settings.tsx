@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { usePlayer } from '@/context/PlayerContext';
+import { useMenuAudio } from '@/hooks/useMenuAudio';
 import colors from '@/constants/colors';
 
 interface SettingRowProps {
@@ -55,6 +56,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { hapticsEnabled, soundEnabled, toggleHaptics, toggleSound, totalRuns, highScore, crystals } = usePlayer();
+  const { playTap } = useMenuAudio(soundEnabled);
 
   const topPad = insets.top + (Platform.OS === 'web' ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === 'web' ? 34 : 0);
@@ -63,7 +65,13 @@ export default function SettingsScreen() {
     <LinearGradient colors={['#090912', '#0C0C18', '#090912']} style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            playTap();
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <Ionicons name="chevron-back" size={24} color={colors.dark.foreground} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>SETTINGS</Text>
@@ -86,7 +94,7 @@ export default function SettingsScreen() {
           <SettingRow
             icon="musical-notes-outline"
             label="Sound Effects"
-            sublabel="In-game audio (coming soon)"
+            sublabel="Music and in-game audio"
             value={soundEnabled}
             onToggle={toggleSound}
             color={colors.dark.accent}

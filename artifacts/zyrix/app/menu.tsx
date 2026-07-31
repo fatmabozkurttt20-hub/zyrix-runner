@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { NeonButton } from '@/components/ui/NeonButton';
 import { usePlayer } from '@/context/PlayerContext';
+import { useMenuAudio } from '@/hooks/useMenuAudio';
 import colors from '@/constants/colors';
 
 const STARS = Array.from({ length: 40 }, (_, i) => ({
@@ -48,7 +49,8 @@ function StarField() {
 
 export default function MenuScreen() {
   const insets = useSafeAreaInsets();
-  const { highScore, crystals, isLoaded } = usePlayer();
+  const { highScore, crystals, isLoaded, soundEnabled } = usePlayer();
+  const { playTap } = useMenuAudio(soundEnabled);
 
   const logoScale = useRef(new Animated.Value(0.85)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -110,7 +112,10 @@ export default function MenuScreen() {
       <Animated.View style={[styles.buttons, { paddingBottom: bottomPad + 28, opacity: buttonsOpacity }]}>
         <NeonButton
           label="PLAY"
-          onPress={() => router.push('/game')}
+          onPress={() => {
+            playTap();
+            router.push('/game');
+          }}
           color={colors.dark.primary}
           size="lg"
           style={styles.playBtn}
@@ -118,7 +123,10 @@ export default function MenuScreen() {
         <View style={styles.secondaryRow}>
           <NeonButton
             label="GARAGE"
-            onPress={() => router.push('/garage')}
+            onPress={() => {
+              playTap();
+              router.push('/garage');
+            }}
             color={colors.dark.accent}
             size="md"
             outlined
@@ -126,7 +134,10 @@ export default function MenuScreen() {
           />
           <NeonButton
             label="SETTINGS"
-            onPress={() => router.push('/settings')}
+            onPress={() => {
+              playTap();
+              router.push('/settings');
+            }}
             color={colors.dark.mutedForeground}
             size="md"
             outlined

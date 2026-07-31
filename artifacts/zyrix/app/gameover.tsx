@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { NeonButton } from '@/components/ui/NeonButton';
 import { usePlayer } from '@/context/PlayerContext';
+import { useMenuAudio } from '@/hooks/useMenuAudio';
 import colors from '@/constants/colors';
 
 function formatDistance(m: number): string {
@@ -44,7 +45,8 @@ export default function GameOverScreen() {
     crystals: string;
     distance: string;
   }>();
-  const { highScore } = usePlayer();
+  const { highScore, soundEnabled } = usePlayer();
+  const { playTap } = useMenuAudio(soundEnabled);
   const insets = useSafeAreaInsets();
 
   const finalScore = parseInt(score ?? '0', 10);
@@ -118,14 +120,20 @@ export default function GameOverScreen() {
         <View style={styles.buttons}>
           <NeonButton
             label="RESTART"
-            onPress={() => router.replace('/game')}
+            onPress={() => {
+              playTap();
+              router.replace('/game');
+            }}
             color={colors.dark.primary}
             size="lg"
             style={styles.fullBtn}
           />
           <NeonButton
             label="MAIN MENU"
-            onPress={() => router.replace('/menu')}
+            onPress={() => {
+              playTap();
+              router.replace('/menu');
+            }}
             color={colors.dark.mutedForeground}
             size="md"
             outlined

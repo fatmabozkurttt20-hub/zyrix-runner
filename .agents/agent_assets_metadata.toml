@@ -30,3 +30,15 @@ id = "ZeZlqMeMaYCZWrs4bwD1s"
 uri = "file://artifacts/zyrix/assets/audio/music_loop.mp3"
 type = "audio"
 title = "zyrix synthwave loop"
+
+[[outputs]]
+id = "wi96U5XRK92TyYU2SJ-gS"
+uri = "file://artifacts/zyrix/assets/audio/ui_tap.mp3"
+type = "audio"
+title = "ui tap"
+
+[[outputs]]
+id = "TlHCmzkt7bYPKiBERjrG8"
+uri = "file://artifacts/zyrix/assets/audio/menu_loop.mp3"
+type = "audio"
+title = "menu ambient loop"

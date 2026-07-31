@@ -13,17 +13,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { BoardCard } from '@/components/ui/BoardCard';
 import { usePlayer } from '@/context/PlayerContext';
+import { useMenuAudio } from '@/hooks/useMenuAudio';
 import { BOARDS } from '@/constants/game';
 import colors from '@/constants/colors';
 
 export default function GarageScreen() {
   const insets = useSafeAreaInsets();
-  const { crystals, selectedBoardId, unlockedBoards, purchaseBoard, selectBoard, highScore } = usePlayer();
+  const { crystals, selectedBoardId, unlockedBoards, purchaseBoard, selectBoard, highScore, soundEnabled } =
+    usePlayer();
+  const { playTap } = useMenuAudio(soundEnabled);
 
   const topPad = insets.top + (Platform.OS === 'web' ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === 'web' ? 34 : 0);
 
   const handleAction = (boardId: string) => {
+    playTap();
     if (unlockedBoards.includes(boardId)) {
       selectBoard(boardId);
     } else {
@@ -35,7 +39,13 @@ export default function GarageScreen() {
     <LinearGradient colors={['#090912', '#0C0C18', '#090912']} style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            playTap();
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <Ionicons name="chevron-back" size={24} color={colors.dark.foreground} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>GARAGE</Text>
@@ -65,7 +75,10 @@ export default function GarageScreen() {
             isUnlocked={unlockedBoards.includes(board.id)}
             isSelected={selectedBoardId === board.id}
             canAfford={crystals >= board.price}
-            onSelect={() => selectBoard(board.id)}
+            onSelect={() => {
+              playTap();
+              selectBoard(board.id);
+            }}
             onPurchase={() => handleAction(board.id)}
           />
         ))}
