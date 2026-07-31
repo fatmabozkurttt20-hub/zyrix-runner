@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   Animated,
   Easing,
@@ -10,7 +10,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { NeonButton } from '@/components/ui/NeonButton';
 import { usePlayer } from '@/context/PlayerContext';
 import { useMenuAudio } from '@/hooks/useMenuAudio';
@@ -52,29 +52,51 @@ export default function MenuScreen() {
   const { highScore, crystals, isLoaded, soundEnabled } = usePlayer();
   const { playTap } = useMenuAudio(soundEnabled);
 
-  const logoScale = useRef(new Animated.Value(0.85)).current;
+  const logoScale = useRef(new Animated.Value(0.92)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const buttonsOpacity = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0.5)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(logoOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.spring(logoScale, { toValue: 1, useNativeDriver: true, speed: 4 }),
-      ]),
-      Animated.timing(buttonsOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
-    ]).start();
+  // Single smooth intro: glow fades in → logo fades/scales in → buttons.
+  // The gentle glow pulse starts only after the intro settles (no flicker).
+  // useFocusEffect so the sequence resets cleanly when returning to the menu.
+  useFocusEffect(
+    React.useCallback(() => {
+      logoScale.setValue(0.92);
+      logoOpacity.setValue(0);
+      buttonsOpacity.setValue(0);
+      glowAnim.setValue(0);
 
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 1, duration: 1800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-        Animated.timing(glowAnim, { toValue: 0.3, duration: 1800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-      ])
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, []);
+      let pulse: Animated.CompositeAnimation | null = null;
+      const intro = Animated.sequence([
+        // 1. Soft glow fades in
+        Animated.timing(glowAnim, { toValue: 0.3, duration: 450, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        // 2. ZYRIX text fades + scales in (no spring overshoot)
+        Animated.parallel([
+          Animated.timing(logoOpacity, { toValue: 1, duration: 550, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(logoScale, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        ]),
+        // 3. Settle — buttons ease in
+        Animated.timing(buttonsOpacity, { toValue: 1, duration: 400, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      ]);
+      intro.start(({ finished }) => {
+        if (!finished) return;
+        // Gentle breathing pulse, well below the logo's opacity
+        pulse = Animated.loop(
+          Animated.sequence([
+            Animated.timing(glowAnim, { toValue: 0.42, duration: 1800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+            Animated.timing(glowAnim, { toValue: 0.22, duration: 1800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+          ])
+        );
+        pulse.start();
+      });
+
+      return () => {
+        intro.stop();
+        pulse?.stop();
+      };
+    }, [logoScale, logoOpacity, buttonsOpacity, glowAnim])
+  );
 
   const topPad = insets.top + (Platform.OS === 'web' ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === 'web' ? 34 : 0);
@@ -97,11 +119,10 @@ export default function MenuScreen() {
 
       {/* Center: Logo */}
       <View style={styles.centerContent}>
+        {/* Logo glow — its own layer so it never rides the logo's fade,
+            and always renders behind the text (no elevation on Android) */}
+        <Animated.View style={[styles.logoGlow, { opacity: glowAnim }]} />
         <Animated.View style={{ opacity: logoOpacity, transform: [{ scale: logoScale }], alignItems: 'center' }}>
-          {/* Logo glow */}
-          <Animated.View
-            style={[styles.logoGlow, { opacity: glowAnim }]}
-          />
           {/* ZYRIX text */}
           <Text style={styles.logoText}>ZYRIX</Text>
           <Text style={styles.tagline}>RIDE THE INFINITE</Text>
@@ -190,7 +211,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 60,
     shadowOpacity: 1,
-    elevation: 20,
   },
   logoText: {
     fontSize: 72,
