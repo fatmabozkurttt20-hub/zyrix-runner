@@ -980,6 +980,8 @@ function Portal30({ progress, world }: { progress: number; world: World }) {
   const op = progress > 1 ? Math.max(0, 1 - (progress - 1) * 4) : 0.35 + 0.65 * e;
   return (
     <View pointerEvents="none" style={{ position: 'absolute', left: cx - size / 2, top: y - size / 2 - size * 0.12, width: size, height: size, opacity: op }}>
+      {/* outer halo bloom */}
+      <View style={{ position: 'absolute', left: '-12%', top: '-12%', width: '124%', height: '124%', borderRadius: 999, backgroundColor: world.trackColor, opacity: 0.06 }} />
       {/* soft core */}
       <View style={{ position: 'absolute', left: '18%', top: '18%', width: '64%', height: '64%', borderRadius: 999, backgroundColor: world.trackColor, opacity: 0.10 }} />
       {/* outer ring */}
@@ -1011,6 +1013,341 @@ function Portal30({ progress, world }: { progress: number; world: World }) {
     </View>
   );
 }
+
+// ─── Cinematic Countdown: 3 · 2 · 1 · GO ─────────────────────────────────────
+const COUNT_STEPS = ['3', '2', '1', 'GO'];
+
+function Countdown({ runKey, world }: { runKey: number; world: World }) {
+  const [idx, setIdx] = useState(0);
+  const [done, setDone] = useState(false);
+  const pop = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    setDone(false);
+    setIdx(0);
+    let i = 0;
+    const show = () => {
+      pop.setValue(0);
+      Animated.timing(pop, { toValue: 1, duration: 430, useNativeDriver: true, easing: Easing.out(Easing.cubic) }).start();
+    };
+    show();
+    const t = setInterval(() => {
+      i++;
+      if (i >= COUNT_STEPS.length) {
+        clearInterval(t);
+        setDone(true);
+        return;
+      }
+      setIdx(i);
+      show();
+    }, 540);
+    return () => clearInterval(t);
+  }, [runKey, pop]);
+
+  if (done) return null;
+  const isGo = idx === 3;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: HORIZON_Y + 44, left: 0, right: 0, alignItems: 'center' }}>
+      <Animated.Text
+        style={{
+          fontSize: isGo ? 66 : 78,
+          fontWeight: '900',
+          letterSpacing: isGo ? 8 : 2,
+          color: isGo ? world.trackColor : '#EAFDFF',
+          textShadowColor: world.trackColor,
+          textShadowOffset: { width: 0, height: 0 },
+          textShadowRadius: 26,
+          opacity: pop.interpolate({ inputRange: [0, 0.12, 0.75, 1], outputRange: [0, 1, 0.95, 0.7] }),
+          transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [1.7, 1] }) }],
+        }}
+      >
+        {COUNT_STEPS[idx]}
+      </Animated.Text>
+    </View>
+  );
+}
+
+// ─── Boost Flames (first 5 seconds) ──────────────────────────────────────────
+const FLAMES = [
+  { left: BOARD_W * 0.18, w: 9, h: 26 },
+  { left: BOARD_W * 0.44, w: 12, h: 34 },
+  { left: BOARD_W * 0.72, w: 9, h: 26 },
+];
+
+function BoostFlames({ playerX, fade, world }: { playerX: Animated.Value; fade: number; world: World }) {
+  const flick = useRef(new Animated.Value(0)).current;
+  const translateX = useRef(Animated.subtract(playerX, BOARD_HALF_W)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(flick, { toValue: 1, duration: 90, useNativeDriver: true }),
+        Animated.timing(flick, { toValue: 0, duration: 110, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [flick]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: PLAYER_Y + BOARD_H / 2 + 6,
+        width: BOARD_W,
+        opacity: fade,
+        transform: [{ translateX }],
+      }}
+    >
+      {FLAMES.map((f, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            position: 'absolute',
+            left: f.left - f.w / 2,
+            top: 0,
+            width: f.w,
+            height: f.h,
+            opacity: flick.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0.55] }),
+            transform: [
+              { translateY: -f.h / 2 },
+              { scaleY: flick.interpolate({ inputRange: [0, 1], outputRange: [1, 0.68] }) },
+              { translateY: f.h / 2 },
+            ],
+          }}
+        >
+          <LinearGradient
+            colors={['#FFFFFF', world.trackColor, 'rgba(34,229,255,0)']}
+            style={{ flex: 1, borderBottomLeftRadius: f.w / 2, borderBottomRightRadius: f.w / 2 }}
+          />
+        </Animated.View>
+      ))}
+    </Animated.View>
+  );
+}
+
+// ─── Drones patrolling above the track ───────────────────────────────────────
+const DRONES = [
+  { baseX: SCREEN_W * 0.30, y: HORIZON_Y + 46, range: SCREEN_W * 0.16, dur: 5200, size: 16 },
+  { baseX: SCREEN_W * 0.68, y: HORIZON_Y + 88, range: SCREEN_W * 0.20, dur: 6800, size: 20 },
+];
+
+function Drones({ world }: { world: World }) {
+  const ts = useRef(DRONES.map(() => new Animated.Value(0))).current;
+  useEffect(() => {
+    const anims = ts.map((v, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(v, { toValue: 1, duration: DRONES[i].dur, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+          Animated.timing(v, { toValue: 0, duration: DRONES[i].dur, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+        ])
+      )
+    );
+    anims.forEach((a) => a.start());
+    return () => anims.forEach((a) => a.stop());
+  }, [ts]);
+
+  return (
+    <>
+      {DRONES.map((d, i) => (
+        <Animated.View
+          key={i}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: d.baseX - d.size / 2,
+            top: d.y,
+            alignItems: 'center',
+            transform: [
+              { translateX: ts[i].interpolate({ inputRange: [0, 1], outputRange: [-d.range / 2, d.range / 2] }) },
+              { translateY: ts[i].interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, i === 0 ? 5 : -6, 0] }) },
+            ],
+          }}
+        >
+          {/* hull */}
+          <View style={{ width: d.size, height: d.size * 0.32, borderRadius: d.size * 0.16, backgroundColor: '#141A2E', borderWidth: 1, borderColor: world.trackColor }} />
+          {/* rotor lights */}
+          <View style={{ position: 'absolute', left: -1, top: 0, width: 3, height: 3, borderRadius: 1.5, backgroundColor: world.accentColor }} />
+          <View style={{ position: 'absolute', right: -1, top: 0, width: 3, height: 3, borderRadius: 1.5, backgroundColor: world.trackColor }} />
+          {/* downward scan beam */}
+          <Animated.View
+            style={{
+              width: d.size * 0.6,
+              height: d.size * 2.6,
+              opacity: ts[i].interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.10, 0.28, 0.10] }),
+            }}
+          >
+            <LinearGradient colors={[world.trackColor, 'rgba(34,229,255,0)']} style={{ flex: 1 }} />
+          </Animated.View>
+        </Animated.View>
+      ))}
+    </>
+  );
+}
+
+// ─── Animated Hologram Signs beside the track ────────────────────────────────
+const HOLOS = [
+  { x: SCREEN_W * 0.075, y: HORIZON_Y + 64, w: 34, h: 48, flip: false },
+  { x: SCREEN_W * 0.845, y: HORIZON_Y + 112, w: 40, h: 56, flip: true },
+];
+
+function HologramSigns({ world }: { world: World }) {
+  const flicker = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(flicker, { toValue: 1, duration: 1100, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+        Animated.timing(flicker, { toValue: 0.25, duration: 140, useNativeDriver: true }),
+        Animated.timing(flicker, { toValue: 0.9, duration: 160, useNativeDriver: true }),
+        Animated.timing(flicker, { toValue: 0, duration: 1300, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [flicker]);
+
+  return (
+    <>
+      {HOLOS.map((hSign, i) => (
+        <Animated.View
+          key={i}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: hSign.x,
+            top: hSign.y,
+            width: hSign.w,
+            height: hSign.h,
+            borderRadius: 3,
+            borderWidth: 1,
+            borderColor: world.trackColor,
+            backgroundColor: 'rgba(34,229,255,0.07)',
+            opacity: flicker.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.95] }),
+            transform: [
+              { perspective: 500 },
+              { rotateY: hSign.flip ? '-24deg' : '24deg' },
+              { translateY: flicker.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) },
+            ],
+          }}
+        >
+          {/* glyph rows */}
+          {[0.18, 0.36, 0.54, 0.74].map((r, j) => (
+            <View
+              key={j}
+              style={{
+                position: 'absolute',
+                left: 5,
+                top: hSign.h * r,
+                width: hSign.w * (j === 0 ? 0.6 : j === 3 ? 0.4 : 0.72),
+                height: 2.5,
+                borderRadius: 1,
+                backgroundColor: j % 2 === 0 ? world.trackColor : world.accentColor,
+                opacity: 0.8,
+              }}
+            />
+          ))}
+          {/* base emitter light */}
+          <View style={{ position: 'absolute', bottom: -7, left: hSign.w * 0.38, width: hSign.w * 0.2, height: 3, borderRadius: 1.5, backgroundColor: '#EAFDFF', opacity: 0.9 }} />
+        </Animated.View>
+      ))}
+    </>
+  );
+}
+
+// ─── High-Speed Streaks (kick in at high speed) ──────────────────────────────
+const STREAKS = Array.from({ length: 8 }, (_, i) => {
+  const left = i % 2 === 0;
+  return {
+    x: left ? SCREEN_W * (0.03 + (i % 4) * 0.025) : SCREEN_W * (0.97 - (i % 4) * 0.025),
+    y: HORIZON_Y + 40 + ((i * 97) % 300),
+    len: 46 + ((i * 53) % 60),
+    left,
+  };
+});
+
+function SpeedStreaks({ level, world }: { level: number; world: World }) {
+  const dash = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.timing(dash, { toValue: 1, duration: 260, useNativeDriver: true, easing: Easing.linear })
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [dash]);
+
+  const strength = Math.min(1, (level - 4) / 4); // level 5..8 → 0.25..1
+  const count = level >= 7 ? 8 : 6;
+  return (
+    <>
+      {STREAKS.slice(0, count).map((s, i) => (
+        <Animated.View
+          key={i}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: s.x,
+            top: s.y,
+            width: 2,
+            height: s.len,
+            borderRadius: 1,
+            backgroundColor: i % 3 === 0 ? '#EAFDFF' : world.trackColor,
+            opacity: dash.interpolate({
+              inputRange: [0, 0.5, 1],
+              outputRange: i % 2 === 0 ? [0.05, 0.4 * strength + 0.1, 0.05] : [0.35 * strength + 0.08, 0.05, 0.35 * strength + 0.08],
+            }),
+            transform: [
+              { translateY: dash.interpolate({ inputRange: [0, 1], outputRange: [-30, 90] }) },
+              { rotate: s.left ? '6deg' : '-6deg' },
+            ],
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
+// ─── Lighting & Bloom overlays (static gradients — near-free) ────────────────
+const BloomLighting = React.memo(({ world }: { world: World }) => (
+  <>
+    {/* intensified horizon core line */}
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: HORIZON_Y - 2,
+        left: 0,
+        right: 0,
+        height: 4,
+        backgroundColor: world.trackColor,
+        opacity: 0.55,
+        shadowColor: world.trackColor,
+        shadowOffset: { width: 0, height: 0 },
+        shadowRadius: 16,
+        shadowOpacity: 1,
+        elevation: 8,
+      }}
+    />
+    {/* bloom falloff above horizon */}
+    <LinearGradient
+      colors={['rgba(34,229,255,0)', 'rgba(34,229,255,0.10)']}
+      style={{ position: 'absolute', top: HORIZON_Y - 34, left: 0, right: 0, height: 32 }}
+      pointerEvents="none"
+    />
+    {/* ambient under-glow rising from the bottom of the track */}
+    <LinearGradient
+      colors={['rgba(34,229,255,0)', 'rgba(34,229,255,0.05)']}
+      style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 130 }}
+      pointerEvents="none"
+    />
+    {/* top-of-sky darkening for contrast */}
+    <LinearGradient
+      colors={['rgba(0,1,6,0.5)', 'rgba(0,1,6,0)']}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 90 }}
+      pointerEvents="none"
+    />
+  </>
+));
 
 // ─── Cinematic Intro: energy beam + rider drop + camera pull-in ──────────────
 const INTRO_MS = 1700;
@@ -1157,6 +1494,28 @@ export function GameScene({
   const shakeX = useRef(new Animated.Value(0)).current;
   const shakeY = useRef(new Animated.Value(0)).current;
 
+  // ── Dynamic speed rumble: subtle continuous shake that scales with speed ──
+  const rumble = useRef(new Animated.Value(0)).current;
+  const rumbleAmp = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(rumble, { toValue: 1, duration: 74, useNativeDriver: true }),
+        Animated.timing(rumble, { toValue: -1, duration: 82, useNativeDriver: true }),
+        Animated.timing(rumble, { toValue: 0.6, duration: 68, useNativeDriver: true }),
+        Animated.timing(rumble, { toValue: -0.4, duration: 78, useNativeDriver: true }),
+        Animated.timing(rumble, { toValue: 0, duration: 70, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [rumble]);
+
+  // Rumble amplitude follows the quantized speed step (0 until mid speed)
+  useEffect(() => {
+    rumbleAmp.setValue(speedStep >= 3 ? (speedStep - 2) * 0.34 : 0);
+  }, [speedStep, rumbleAmp]);
+
   // ── Particle bursts (crystal pickups + collision) ──
   const [bursts, setBursts] = useState<Burst[]>([]);
   const burstIdRef = useRef(0);
@@ -1261,7 +1620,7 @@ export function GameScene({
             transform: [
               { translateX: Animated.add(camPan, shakeX) },
               { translateX: swayPx },
-              { translateY: shakeY },
+              { translateY: Animated.add(shakeY, Animated.multiply(rumble, rumbleAmp)) },
               { translateY: introShiftY },
               { scale: fovScale },
               { scale: introScale },
@@ -1283,6 +1642,7 @@ export function GameScene({
         <CityNeon world={world} />
         <NeonBillboards world={world} />
         <FlyingVehicles world={world} />
+        <BloomLighting world={world} />
 
         {/* Horizon glow */}
         <View
@@ -1312,6 +1672,10 @@ export function GameScene({
         {/* 30s portal (visual only) */}
         <Portal30 progress={displayState.portal30} world={world} />
 
+        {/* Drones + hologram signs over the track */}
+        <Drones world={world} />
+        <HologramSigns world={world} />
+
         {/* Atmospheric fog at the horizon */}
         <DistanceFog world={world} />
 
@@ -1330,6 +1694,18 @@ export function GameScene({
 
         {/* Intro energy beam */}
         {!introDone && <EnergyBeam beamT={beamT} world={world} />}
+
+        {/* Boost flames during the first 5 seconds */}
+        {el < 5000 && (
+          <BoostFlames
+            playerX={playerX}
+            fade={el > 4300 ? Math.max(0, (5000 - el) / 700) : 1}
+            world={world}
+          />
+        )}
+
+        {/* High-speed streaks */}
+        {speedStep >= 5 && <SpeedStreaks level={speedStep} world={world} />}
 
         {/* Player — wrapped in intro drop transform */}
         <Animated.View
@@ -1366,6 +1742,9 @@ export function GameScene({
 
       {/* 30s portal pass-through flash */}
       {p30Flash && <PortalFlash key={`p30-${runKey}`} world={world} />}
+
+      {/* Cinematic countdown */}
+      <Countdown runKey={runKey} world={world} />
 
       {Platform.OS === 'web' && <View style={{ height: 34 }} />}
     </View>
