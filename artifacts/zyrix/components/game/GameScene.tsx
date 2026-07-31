@@ -144,26 +144,57 @@ function CrystalView({ crystal, world }: { crystal: SpawnedCrystal; world: World
   const { x, y, scale } = perspPos(crystal.lane, crystal.progress);
   const size = GAME_CONFIG.CRYSTAL_BASE_SIZE * scale;
   if (crystal.collected || crystal.progress < 0) return null;
+  const halo = size * 2.2;
   return (
-    <View
-      style={{
-        position: 'absolute',
-        left: x - size / 2,
-        top: y - size,
-        width: size,
-        height: size,
-        backgroundColor: world.crystalColor,
-        borderRadius: Math.max(1, size * 0.12),
-        transform: [{ rotate: '45deg' }],
-        borderWidth: Math.max(0.5, size * 0.06),
-        borderColor: 'rgba(255,255,255,0.8)',
+    <>
+      {/* Bloom halo */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: x - halo / 2,
+          top: y - size / 2 - halo / 2,
+          width: halo,
+          height: halo,
+          borderRadius: halo / 2,
+          backgroundColor: world.crystalColor,
+          opacity: 0.14,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: x - size / 2,
+          top: y - size,
+          width: size,
+          height: size,
+          backgroundColor: world.crystalColor,
+          borderRadius: Math.max(1, size * 0.12),
+          transform: [{ rotate: '45deg' }],
+          borderWidth: Math.max(0.5, size * 0.06),
+          borderColor: 'rgba(255,255,255,0.8)',
         shadowColor: world.crystalColor,
         shadowOffset: { width: 0, height: 0 },
         shadowRadius: Math.max(6, size * 0.5),
         shadowOpacity: 1,
         elevation: 6,
-      }}
-    />
+        }}
+      />
+      {/* Specular sparkle */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: x - size * 0.1,
+          top: y - size * 0.78,
+          width: size * 0.22,
+          height: size * 0.22,
+          borderRadius: size * 0.11,
+          backgroundColor: '#FFFFFF',
+          opacity: 0.9,
+        }}
+      />
+    </>
   );
 }
 
@@ -259,6 +290,22 @@ const BoardBody = React.memo(() => (
         d={`M${BOARD_W * 0.28} ${BOARD_H * 0.62} L${BOARD_W * 0.72} ${BOARD_H * 0.62}`}
         stroke={NEON_DIM}
         strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      {/* Glossy reflection sheen across the deck */}
+      <Path
+        d={`M${BOARD_W * 0.10} ${BOARD_H * 0.44}
+            Q${BOARD_W * 0.34} ${BOARD_H * 0.20} ${BOARD_W * 0.62} ${BOARD_H * 0.24}
+            Q${BOARD_W * 0.44} ${BOARD_H * 0.38} ${BOARD_W * 0.14} ${BOARD_H * 0.52} Z`}
+        fill="#FFFFFF"
+        opacity="0.10"
+      />
+      <Path
+        d={`M${BOARD_W * 0.68} ${BOARD_H * 0.22} Q${BOARD_W * 0.80} ${BOARD_H * 0.22} ${BOARD_W * 0.88} ${BOARD_H * 0.34}`}
+        stroke="#FFFFFF"
+        strokeWidth="1.4"
+        opacity="0.22"
+        fill="none"
         strokeLinecap="round"
       />
       {/* Energy rings underneath (anti-grav field) */}
@@ -453,6 +500,255 @@ function PortalFlash({ world }: { world: World }) {
     />
   );
 }
+
+// ─── Cyber City Skyline ──────────────────────────────────────────────────────
+// Static memoized SVG silhouette + a single shared Animated value pulsing a
+// few neon signs. Deterministic layout (no Math.random at render).
+const CITY_H = 96;
+const BUILDINGS_BACK = Array.from({ length: 14 }, (_, i) => {
+  const w = 22 + ((i * 53) % 26);
+  const h = 26 + ((i * 37) % 44);
+  return { x: (SCREEN_W / 14) * i - 4, w, h };
+});
+const BUILDINGS_FRONT = Array.from({ length: 9 }, (_, i) => {
+  const w = 30 + ((i * 71) % 34);
+  const h = 44 + ((i * 61) % 50);
+  return { x: (SCREEN_W / 9) * i + ((i * 13) % 12) - 6, w, h };
+});
+// Deterministic window dots on front buildings
+const WINDOWS = BUILDINGS_FRONT.flatMap((b, bi) =>
+  Array.from({ length: 4 + (bi % 3) }, (_, wi) => ({
+    x: b.x + 5 + ((wi * 29 + bi * 17) % Math.max(8, b.w - 10)),
+    y: CITY_H - b.h + 8 + ((wi * 41 + bi * 23) % Math.max(10, b.h - 18)),
+  }))
+);
+
+const CitySilhouette = React.memo(({ world }: { world: World }) => (
+  <Svg width={SCREEN_W} height={CITY_H} style={{ position: 'absolute', top: HORIZON_Y - CITY_H }}>
+    {BUILDINGS_BACK.map((b, i) => (
+      <Path
+        key={`b${i}`}
+        d={`M${b.x} ${CITY_H} L${b.x} ${CITY_H - b.h} L${b.x + b.w} ${CITY_H - b.h} L${b.x + b.w} ${CITY_H} Z`}
+        fill="#060814"
+        opacity={0.85}
+      />
+    ))}
+    {BUILDINGS_FRONT.map((b, i) => (
+      <Path
+        key={`f${i}`}
+        d={`M${b.x} ${CITY_H} L${b.x} ${CITY_H - b.h} L${b.x + b.w * 0.5} ${CITY_H - b.h - (i % 2 === 0 ? 6 : 0)} L${b.x + b.w} ${CITY_H - b.h} L${b.x + b.w} ${CITY_H} Z`}
+        fill="#0A0D1E"
+      />
+    ))}
+    {/* Rooftop antenna lights */}
+    {BUILDINGS_FRONT.filter((_, i) => i % 3 === 0).map((b, i) => (
+      <Circle key={`a${i}`} cx={b.x + b.w * 0.5} cy={CITY_H - b.h - (i % 2 === 0 ? 8 : 2)} r={1.6} fill={world.trackColor} opacity={0.9} />
+    ))}
+    {/* Windows */}
+    {WINDOWS.map((w, i) => (
+      <Circle key={`w${i}`} cx={w.x} cy={w.y} r={0.9} fill={i % 4 === 0 ? world.accentColor : world.trackColor} opacity={i % 3 === 0 ? 0.75 : 0.4} />
+    ))}
+  </Svg>
+));
+
+/** Pulsing neon sign strips over the skyline — one shared Animated value. */
+function CityNeon({ world }: { world: World }) {
+  const pulse = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 1600, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 1600, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [pulse]);
+
+  const signs = [
+    { left: SCREEN_W * 0.12, top: HORIZON_Y - 52, w: 18, color: world.trackColor },
+    { left: SCREEN_W * 0.46, top: HORIZON_Y - 70, w: 24, color: world.accentColor },
+    { left: SCREEN_W * 0.78, top: HORIZON_Y - 44, w: 14, color: world.trackColor },
+  ];
+  return (
+    <>
+      {signs.map((s, i) => (
+        <Animated.View
+          key={i}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: s.left,
+            top: s.top,
+            width: s.w,
+            height: 3,
+            borderRadius: 1.5,
+            backgroundColor: s.color,
+            opacity: i === 1 ? pulse : Animated.multiply(pulse, 0.7),
+            shadowColor: s.color,
+            shadowOffset: { width: 0, height: 0 },
+            shadowRadius: 6,
+            shadowOpacity: 0.9,
+            elevation: 4,
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
+// ─── Floating Air Particles ───────────────────────────────────────────────────
+// 7 dust motes drifting upward on two staggered native-driver loops.
+const MOTES = Array.from({ length: 7 }, (_, i) => ({
+  x: ((i * 149) % 100) / 100,
+  y: 0.42 + (((i * 83) % 50) / 100) * 0.5,
+  size: 1.5 + (i % 3),
+  group: i % 2,
+}));
+
+function AirParticles({ world }: { world: World }) {
+  const driftA = useRef(new Animated.Value(0)).current;
+  const driftB = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const mk = (v: Animated.Value, dur: number) =>
+      Animated.loop(
+        Animated.timing(v, { toValue: 1, duration: dur, useNativeDriver: true, easing: Easing.linear })
+      );
+    const a = mk(driftA, 5200);
+    const b = mk(driftB, 7600);
+    a.start();
+    b.start();
+    return () => {
+      a.stop();
+      b.stop();
+    };
+  }, [driftA, driftB]);
+
+  return (
+    <>
+      {MOTES.map((m, i) => {
+        const v = m.group === 0 ? driftA : driftB;
+        return (
+          <Animated.View
+            key={i}
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: m.x * SCREEN_W,
+              top: m.y * (SCREEN_W * 2),
+              width: m.size,
+              height: m.size,
+              borderRadius: m.size / 2,
+              backgroundColor: world.trackColor,
+              opacity: v.interpolate({ inputRange: [0, 0.15, 0.8, 1], outputRange: [0, 0.55, 0.35, 0] }),
+              transform: [
+                { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -70 - m.size * 12] }) },
+                { translateX: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, m.group === 0 ? 8 : -8, 0] }) },
+              ],
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+// ─── Energy Pillars + Rail Light Strips (scroll-driven) ──────────────────────
+// Positioned from scrollOffset, which already updates per frame — no extra
+// animation machinery. Simple Views, cheap on Android.
+function TrackSideFX({ scrollOffset, world }: { scrollOffset: number; world: World }) {
+  const items = [];
+  const N = 4;
+  for (let i = 0; i < N; i++) {
+    const t = ((i / N) + scrollOffset * 0.5) % 1;
+    if (t < 0.08) continue;
+    const e = Math.pow(t, 0.85);
+    const y = HORIZON_Y + (PLAYER_Y + 60 - HORIZON_Y) * e;
+    const lx = VP_X + (TRACK_LEFT_X - VP_X) * e;
+    const rx = VP_X + (TRACK_RIGHT_X - VP_X) * e;
+    const h = 10 + 46 * e;
+    const w = Math.max(2, 5 * e);
+    const op = 0.15 + 0.5 * e;
+    for (const [key, x, off] of [[`L${i}`, lx, -10 - w] as const, [`R${i}`, rx, 10] as const]) {
+      items.push(
+        <View
+          key={key}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: x + off,
+            top: y - h,
+            width: w,
+            height: h,
+            borderRadius: w / 2,
+            backgroundColor: world.trackColor,
+            opacity: op,
+            shadowColor: world.trackColor,
+            shadowOffset: { width: 0, height: 0 },
+            shadowRadius: 8 * e,
+            shadowOpacity: 0.9,
+            elevation: 4,
+          }}
+        />
+      );
+    }
+  }
+  // Bright light pulses racing along the outer rails
+  const M = 3;
+  for (let i = 0; i < M; i++) {
+    const t = ((i / M) + scrollOffset * 1.4) % 1;
+    if (t < 0.05) continue;
+    const e = Math.pow(t, 0.85);
+    const y = HORIZON_Y + (PLAYER_Y + 60 - HORIZON_Y) * e;
+    const len = 6 + 22 * e;
+    for (const [key, x0, x1] of [
+      [`SL${i}`, VP_X + (TRACK_LEFT_X - VP_X) * e, VP_X + (TRACK_LEFT_X - VP_X) * Math.min(1, e + 0.05)] as const,
+      [`SR${i}`, VP_X + (TRACK_RIGHT_X - VP_X) * e, VP_X + (TRACK_RIGHT_X - VP_X) * Math.min(1, e + 0.05)] as const,
+    ]) {
+      items.push(
+        <View
+          key={key}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: Math.min(x0, x1) - 2,
+            top: y - 1,
+            width: Math.max(len, Math.abs(x1 - x0)),
+            height: Math.max(2, 3 * e),
+            borderRadius: 2,
+            backgroundColor: world.trackColor,
+            opacity: 0.18 + 0.42 * e,
+            shadowColor: world.trackColor,
+            shadowOffset: { width: 0, height: 0 },
+            shadowRadius: 5,
+            shadowOpacity: 0.8,
+            elevation: 3,
+            transform: [{ rotate: `${x0 < VP_X ? 61 : -61}deg` }],
+          }}
+        />
+      );
+    }
+  }
+  return <>{items}</>;
+}
+
+// ─── Distance Fog ─────────────────────────────────────────────────────────────
+const DistanceFog = React.memo(({ world }: { world: World }) => (
+  <>
+    {/* Haze over the city base */}
+    <LinearGradient
+      colors={['rgba(10,16,38,0)', 'rgba(12,20,46,0.75)']}
+      style={{ position: 'absolute', top: HORIZON_Y - 44, left: 0, right: 0, height: 44 }}
+      pointerEvents="none"
+    />
+    {/* Fog rolling from the horizon down the track */}
+    <LinearGradient
+      colors={[world.horizonGlow, 'rgba(10,16,38,0.35)', 'rgba(10,16,38,0)']}
+      style={{ position: 'absolute', top: HORIZON_Y, left: 0, right: 0, height: 110 }}
+      pointerEvents="none"
+    />
+  </>
+));
 
 // ─── Stars ────────────────────────────────────────────────────────────────────
 const STARS = Array.from({ length: 28 }, (_, i) => ({
@@ -653,6 +949,10 @@ export function GameScene({
 
         <Stars world={world} />
 
+        {/* Cyber city skyline behind the horizon */}
+        <CitySilhouette world={world} />
+        <CityNeon world={world} />
+
         {/* Horizon glow */}
         <View
           style={{
@@ -673,6 +973,13 @@ export function GameScene({
 
         <TrackLines world={world} />
         <SpeedLines scrollOffset={displayState.scrollOffset} world={world} />
+        <TrackSideFX scrollOffset={displayState.scrollOffset} world={world} />
+
+        {/* Atmospheric fog at the horizon */}
+        <DistanceFog world={world} />
+
+        {/* Floating air particles */}
+        <AirParticles world={world} />
 
         {/* Crystals */}
         {displayState.crystalObjects.map((c) => (
