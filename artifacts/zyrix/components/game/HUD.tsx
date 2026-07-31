@@ -85,6 +85,24 @@ export function HUD({ displayState, onPause, soundEnabled, onToggleSound }: HUDP
         <Ionicons name="diamond" size={14} color={colors.dark.crystal} />
         <Text style={styles.crystalText}>{displayState.sessionCrystals}</Text>
       </Animated.View>
+
+      {/* Overdrive meter */}
+      <View style={styles.odRow}>
+        <Ionicons
+          name="flash"
+          size={11}
+          color={displayState.overdriveActive ? '#E3B8FF' : '#B44CFF'}
+        />
+        <View style={[styles.odTrack, displayState.overdriveActive && styles.odTrackActive]}>
+          <View
+            style={[
+              styles.odFill,
+              { width: `${Math.round(Math.max(0, Math.min(1, displayState.overdriveMeter)) * 100)}%` },
+              displayState.overdriveActive && styles.odFillActive,
+            ]}
+          />
+        </View>
+      </View>
     </View>
   );
 }
@@ -154,5 +172,36 @@ const styles = StyleSheet.create({
     color: colors.dark.crystal,
     fontSize: 13,
     fontFamily: 'Inter_600SemiBold',
+  },
+  odRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+  },
+  odTrack: {
+    width: 92,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(180,76,255,0.18)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(180,76,255,0.45)',
+    overflow: 'hidden',
+  },
+  odTrackActive: {
+    borderColor: 'rgba(227,184,255,0.9)',
+    shadowColor: '#B44CFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 8,
+    shadowOpacity: 0.9,
+    elevation: 4,
+  },
+  odFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: '#B44CFF',
+  },
+  odFillActive: {
+    backgroundColor: '#E3B8FF',
   },
 });

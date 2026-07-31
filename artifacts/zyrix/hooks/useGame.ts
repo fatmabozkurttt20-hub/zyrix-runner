@@ -25,6 +25,22 @@ export interface SpawnedCrystal {
   collected: boolean;
 }
 
+export interface SpawnedOrb {
+  id: string;
+  lane: 0 | 1 | 2;
+  progress: number;
+  collected: boolean;
+}
+
+// ─── Overdrive tuning ─────────────────────────────────────────────────────────
+const OVERDRIVE = {
+  ORBS_TO_FILL: 3,
+  DURATION_MS: 6500, // within the 5–8s spec
+  SPEED_MULT: 0.3, // +30% movement speed while active
+  RAMP_IN_MS: 400,
+  RAMP_OUT_MS: 900, // smooth return to normal speed
+} as const;
+
 // ─── Internal Mutable State (stored in ref, not React state) ──────────────────
 interface GameRef {
   running: boolean;
@@ -49,6 +65,16 @@ interface GameRef {
   elapsedMs: number;
   /** Visual-only 30s portal: -1 = not started, 0..1.3 = approach progress. */
   portal30: number;
+  /** Overdrive: purple orbs on the track. */
+  orbs: SpawnedOrb[];
+  orbTimer: number;
+  nextOrbIn: number;
+  /** Overdrive meter 0..1 — fills from orbs, drains while active. */
+  overdriveMeter: number;
+  /** Remaining Overdrive time in ms; 0 = inactive. */
+  overdriveMs: number;
+  /** Eased 0..1 boost factor — ramps in/out so speed never snaps. */
+  overdriveBoost: number;
   jumping: boolean;
   jumpTimer: number;
   /** Lane the board is visually sliding away from (during lane-change anim). */
@@ -77,6 +103,12 @@ function makeGameRef(): GameRef {
     crystalTimer: 0,
     nextCrystalIn: 1000,
     scrollOffset: 0,
+    orbs: [],
+    orbTimer: 0,
+    nextOrbIn: 5000,
+    overdriveMeter: 0,
+    overdriveMs: 0,
+    overdriveBoost: 0,
     showPortal: false,
     portalTimer: 0,
     elapsedMs: 0,
@@ -108,8 +140,13 @@ export interface GameDisplayState {
   elapsedMs: number;
   /** Visual-only 30s portal approach: -1 inactive, 0..1.3 approaching/past. */
   portal30: number;
+  /** Overdrive meter 0..1 (fills from orbs, drains while active). */
+  overdriveMeter: number;
+  /** True while Overdrive is active. */
+  overdriveActive: boolean;
   obstacles: SpawnedObstacle[];
   crystalObjects: SpawnedCrystal[];
+  orbs: SpawnedOrb[];
 }
 
 function makeDisplayState(): GameDisplayState {
@@ -127,8 +164,11 @@ function makeDisplayState(): GameDisplayState {
     speed: GAME_CONFIG.INITIAL_SPEED,
     elapsedMs: 0,
     portal30: -1,
+    overdriveMeter: 0,
+    overdriveActive: false,
     obstacles: [],
     crystalObjects: [],
+    orbs: [],
   };
 }
 
@@ -260,18 +300,31 @@ function tick(
     g.portal30 += g.speed * (dt / 1000) * 0.55; // approaches like a track object
   }
 
-  // 1. Speed ramp
+  // 0b. Overdrive timer + eased boost (ramps in/out so speed never snaps)
+  if (g.overdriveMs > 0) {
+    g.overdriveMs = Math.max(0, g.overdriveMs - dt);
+    g.overdriveMeter = g.overdriveMs / OVERDRIVE.DURATION_MS; // meter drains
+    g.overdriveBoost = Math.min(1, g.overdriveBoost + dt / OVERDRIVE.RAMP_IN_MS);
+    if (g.overdriveMs === 0) g.overdriveMeter = 0;
+  } else if (g.overdriveBoost > 0) {
+    g.overdriveBoost = Math.max(0, g.overdriveBoost - dt / OVERDRIVE.RAMP_OUT_MS);
+  }
+  const boostMul = 1 + OVERDRIVE.SPEED_MULT * g.overdriveBoost;
+
+  // 1. Speed ramp (base ramp unchanged; Overdrive multiplies movement only)
   g.speed = Math.min(g.speed + GAME_CONFIG.SPEED_RAMP * dt, GAME_CONFIG.MAX_SPEED);
+  const moveSpeed = g.speed * boostMul;
 
   // 2. Score + distance
-  const speedRatio = g.speed / GAME_CONFIG.INITIAL_SPEED;
+  const speedRatio = moveSpeed / GAME_CONFIG.INITIAL_SPEED;
   g.score += (GAME_CONFIG.SCORE_PER_SEC * speedRatio * dt) / 1000;
-  g.distanceM += g.speed * GAME_CONFIG.DIST_SCALE * (dt / 1000);
+  g.distanceM += moveSpeed * GAME_CONFIG.DIST_SCALE * (dt / 1000);
 
   // 3. Move objects
-  const inc = g.speed * (dt / 1000);
+  const inc = moveSpeed * (dt / 1000);
   for (const o of g.obstacles) o.progress += inc;
   for (const c of g.crystalObjects) c.progress += inc;
+  for (const b of g.orbs) b.progress += inc;
 
   // 4. Jump timer — while airborne the player clears obstacles
   if (g.jumping) {
@@ -304,11 +357,12 @@ function tick(
     }
   }
 
-  // 5. Crystal collection
+  // 5. Crystal collection (Overdrive magnet: pulls crystals from every lane)
+  const magnet = g.overdriveMs > 0;
   for (const c of g.crystalObjects) {
     if (
       !c.collected &&
-      c.lane === collisionLane &&
+      (magnet || c.lane === collisionLane) &&
       c.progress >= GAME_CONFIG.CRYSTAL_NEAR &&
       c.progress <= GAME_CONFIG.CRYSTAL_FAR
     ) {
@@ -317,6 +371,27 @@ function tick(
       g.score += GAME_CONFIG.CRYSTAL_SCORE;
       sounds.pickup?.();
       if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }
+
+  // 5b. Overdrive orb collection — fills the meter; full meter auto-activates
+  for (const b of g.orbs) {
+    if (
+      !b.collected &&
+      b.lane === collisionLane &&
+      b.progress >= GAME_CONFIG.CRYSTAL_NEAR &&
+      b.progress <= GAME_CONFIG.CRYSTAL_FAR
+    ) {
+      b.collected = true;
+      sounds.pickup?.();
+      if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      if (g.overdriveMs <= 0) {
+        g.overdriveMeter = Math.min(1, g.overdriveMeter + 1 / OVERDRIVE.ORBS_TO_FILL);
+        if (g.overdriveMeter >= 1) {
+          g.overdriveMs = OVERDRIVE.DURATION_MS; // auto-activate
+          if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        }
+      }
     }
   }
 
@@ -338,12 +413,31 @@ function tick(
     spawnCrystals(g);
   }
 
+  // 7b. Spawn Overdrive orbs — sparse; paused while Overdrive is running
+  g.orbTimer += dt;
+  if (g.orbTimer >= g.nextOrbIn) {
+    g.orbTimer = 0;
+    g.nextOrbIn = randRange(4500, 7500);
+    if (g.overdriveMs <= 0 && g.overdriveMeter < 1) {
+      // Pick a lane without a close obstacle (same rule as crystals)
+      const blocked = new Set(
+        g.obstacles.filter((o) => o.progress < 0.35).map((o) => o.lane)
+      );
+      const open = ([0, 1, 2] as const).filter((l) => !blocked.has(l));
+      if (open.length > 0) {
+        const lane = open[Math.floor(Math.random() * open.length)];
+        g.orbs.push({ id: `orb${g.idCounter++}`, lane, progress: 0, collected: false });
+      }
+    }
+  }
+
   // 8. Cleanup passed objects
   g.obstacles = g.obstacles.filter((o) => o.progress < 1.2 && !o.hit);
   g.crystalObjects = g.crystalObjects.filter((c) => c.progress < 1.2 && !c.collected);
+  g.orbs = g.orbs.filter((b) => b.progress < 1.2 && !b.collected);
 
   // 9. Scroll offset (track grid animation)
-  g.scrollOffset = (g.scrollOffset + g.speed * 0.40 * (dt / 1000)) % 1;
+  g.scrollOffset = (g.scrollOffset + moveSpeed * 0.40 * (dt / 1000)) % 1;
 
   // 10. World progression
   const newWorld = Math.floor(g.score / GAME_CONFIG.WORLD_SCORE_INTERVAL) % WORLDS.length;
@@ -396,8 +490,11 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
       speed: g.speed,
       elapsedMs: g.elapsedMs,
       portal30: g.portal30,
+      overdriveMeter: g.overdriveMeter,
+      overdriveActive: g.overdriveMs > 0,
       obstacles: [...g.obstacles],
       crystalObjects: [...g.crystalObjects],
+      orbs: [...g.orbs],
     });
   }, []);
 

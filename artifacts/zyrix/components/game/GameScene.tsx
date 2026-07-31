@@ -5,6 +5,7 @@ import {
   Platform,
   PanResponder,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,7 +24,7 @@ import {
   WORLDS,
   World,
 } from '@/constants/game';
-import { GameDisplayState, SpawnedObstacle, SpawnedCrystal } from '@/hooks/useGame';
+import { GameDisplayState, SpawnedObstacle, SpawnedCrystal, SpawnedOrb } from '@/hooks/useGame';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BOARD_W = GAME_CONFIG.PLAYER_W;
@@ -136,6 +137,221 @@ function ObstacleView({ obstacle, world }: { obstacle: SpawnedObstacle; world: W
         elevation: 5,
       }}
     />
+  );
+}
+
+// ─── Overdrive orb (purple energy sphere) ─────────────────────────────────────
+const ORB_COLOR = '#B44CFF';
+
+function OrbView({ orb }: { orb: SpawnedOrb }) {
+  const { x, y, scale } = perspPos(orb.lane, orb.progress);
+  if (orb.collected || orb.progress < 0) return null;
+  const size = GAME_CONFIG.CRYSTAL_BASE_SIZE * 1.25 * scale;
+  const halo = size * 2.6;
+  return (
+    <>
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: x - halo / 2,
+          top: y - size / 2 - halo / 2,
+          width: halo,
+          height: halo,
+          borderRadius: halo / 2,
+          backgroundColor: ORB_COLOR,
+          opacity: 0.18,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: x - size / 2,
+          top: y - size,
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: ORB_COLOR,
+          borderWidth: Math.max(0.5, size * 0.08),
+          borderColor: 'rgba(255,255,255,0.85)',
+          shadowColor: ORB_COLOR,
+          shadowOffset: { width: 0, height: 0 },
+          shadowRadius: Math.max(6, size * 0.6),
+          shadowOpacity: 1,
+          elevation: 6,
+        }}
+      />
+      {/* White energy core */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: x - size * 0.18,
+          top: y - size * 0.68,
+          width: size * 0.36,
+          height: size * 0.36,
+          borderRadius: size * 0.18,
+          backgroundColor: '#FFFFFF',
+          opacity: 0.95,
+        }}
+      />
+    </>
+  );
+}
+
+// ─── Overdrive FX: neon trail + screen glow + energy particles ────────────────
+// Always mounted; fades in/out with `active` and renders nothing while idle.
+const OverdriveFX = React.memo(function OverdriveFX({
+  active,
+  playerX,
+}: {
+  active: boolean;
+  playerX: Animated.Value;
+}) {
+  const fade = useRef(new Animated.Value(0)).current;
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (active) {
+      setVisible(true);
+      Animated.timing(fade, { toValue: 1, duration: 400, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    } else {
+      Animated.timing(fade, { toValue: 0, duration: 700, easing: Easing.inOut(Easing.quad), useNativeDriver: true }).start(
+        ({ finished }) => finished && setVisible(false)
+      );
+    }
+  }, [active, fade]);
+
+  // Shared flicker + particle clock (single loop for all FX)
+  const clock = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!visible) return;
+    const anim = Animated.loop(
+      Animated.timing(clock, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true })
+    );
+    anim.start();
+    return () => {
+      anim.stop();
+      clock.setValue(0);
+    };
+  }, [visible, clock]);
+
+  const trailX = useRef(Animated.subtract(playerX, 0)).current;
+  if (!visible) return null;
+
+  const flicker = clock.interpolate({
+    inputRange: [0, 0.25, 0.5, 0.75, 1],
+    outputRange: [0.55, 1, 0.7, 0.95, 0.55],
+  });
+
+  return (
+    <>
+      {/* Neon trail behind the hoverboard */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: -BOARD_HALF_W * 0.55,
+          top: PLAYER_Y - 6,
+          width: BOARD_HALF_W * 1.1,
+          height: 120,
+          opacity: Animated.multiply(fade, flicker),
+          transform: [{ translateX: trailX }],
+        }}
+      >
+        <LinearGradient
+          colors={[`${ORB_COLOR}CC`, `${ORB_COLOR}55`, `${ORB_COLOR}00`]}
+          style={{ flex: 1, borderRadius: BOARD_HALF_W * 0.55 }}
+        />
+      </Animated.View>
+
+      {/* Energy particles rising around the player */}
+      {[-30, -12, 14, 32].map((dx, i) => (
+        <Animated.View
+          key={i}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: dx - 2,
+            top: PLAYER_Y - 20,
+            width: 4 + (i % 2) * 2,
+            height: 4 + (i % 2) * 2,
+            borderRadius: 4,
+            backgroundColor: i % 2 ? '#E3B8FF' : ORB_COLOR,
+            opacity: Animated.multiply(
+              fade,
+              clock.interpolate({
+                inputRange: [0, 0.5, 1],
+                outputRange: i % 2 ? [0.9, 0.2, 0.9] : [0.25, 0.85, 0.25],
+              })
+            ),
+            transform: [
+              { translateX: trailX },
+              {
+                translateY: clock.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -(46 + i * 14)],
+                }),
+              },
+            ],
+          }}
+        />
+      ))}
+
+      {/* Subtle purple screen glow (edges only, non-blocking) */}
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { opacity: Animated.multiply(fade, 0.5) }]}
+      >
+        <LinearGradient
+          colors={[`${ORB_COLOR}3C`, `${ORB_COLOR}00`]}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 110 }}
+        />
+        <LinearGradient
+          colors={[`${ORB_COLOR}00`, `${ORB_COLOR}46`]}
+          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 150 }}
+        />
+      </Animated.View>
+    </>
+  );
+});
+
+// ─── OVERDRIVE title — one-shot, shows for ~1s on activation ─────────────────
+function OverdriveTitle() {
+  const t = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(t, { toValue: 1, duration: 160, easing: Easing.out(Easing.back(1.6)), useNativeDriver: true }),
+      Animated.delay(640),
+      Animated.timing(t, { toValue: 0, duration: 220, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+    ]).start();
+  }, [t]);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: HORIZON_Y + 60,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        opacity: t,
+        transform: [{ scale: t.interpolate({ inputRange: [0, 1], outputRange: [1.6, 1] }) }],
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 40,
+          fontFamily: 'Inter_700Bold',
+          letterSpacing: 8,
+          color: '#F0DBFF',
+          textShadowColor: ORB_COLOR,
+          textShadowOffset: { width: 0, height: 0 },
+          textShadowRadius: 24,
+        }}
+      >
+        OVERDRIVE
+      </Text>
+    </Animated.View>
   );
 }
 
@@ -1459,6 +1675,14 @@ export function GameScene({
     swayPx = Math.round(Math.sin((el / 4200) * Math.PI * 2) * 9 * fade);
   }
 
+  // ── Overdrive activation: one-shot title key ──
+  const [odKey, setOdKey] = useState(0);
+  const prevOdRef = useRef(false);
+  useEffect(() => {
+    if (displayState.overdriveActive && !prevOdRef.current) setOdKey((k) => k + 1);
+    prevOdRef.current = displayState.overdriveActive;
+  }, [displayState.overdriveActive]);
+
   // ── One-shot flash when the 30s portal engulfs the player ──
   const [p30Flash, setP30Flash] = useState(false);
   const prevP30Ref = useRef(-1);
@@ -1734,6 +1958,11 @@ export function GameScene({
           <CrystalView key={c.id} crystal={c} world={world} />
         ))}
 
+        {/* Overdrive orbs */}
+        {displayState.orbs.map((b) => (
+          <OrbView key={b.id} orb={b} />
+        ))}
+
         {/* Obstacles */}
         {displayState.obstacles.map((o) => (
           <ObstacleView key={o.id} obstacle={o} world={world} />
@@ -1753,6 +1982,10 @@ export function GameScene({
 
         {/* High-speed streaks */}
         {speedStep >= 5 && <SpeedStreaks level={speedStep} world={world} />}
+
+        {/* Overdrive trail + particles + glow (behind the player) */}
+        <OverdriveFX active={displayState.overdriveActive} playerX={playerX} />
+
 
         {/* Player — wrapped in intro drop transform */}
         <Animated.View
@@ -1789,6 +2022,9 @@ export function GameScene({
 
       {/* 30s portal pass-through flash */}
       {p30Flash && <PortalFlash key={`p30-${runKey}`} world={world} />}
+
+      {/* OVERDRIVE title — one-shot per activation */}
+      {odKey > 0 && <OverdriveTitle key={odKey} />}
 
       {/* Cinematic countdown */}
       <Countdown runKey={runKey} world={world} />
