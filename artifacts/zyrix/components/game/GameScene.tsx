@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Animated,
   Easing,
@@ -378,6 +378,65 @@ const PlayerView = React.memo(function PlayerView({
   );
 });
 
+// ─── Particle Burst ───────────────────────────────────────────────────────────
+// One Animated.Value drives the whole burst — cheap enough for Android.
+interface Burst {
+  id: number;
+  x: number;
+  y: number;
+  color: string;
+  kind: 'crystal' | 'hit';
+}
+
+const BURST_DIRS = Array.from({ length: 10 }, (_, i) => {
+  const a = (i / 10) * Math.PI * 2 + 0.35;
+  return { dx: Math.cos(a), dy: Math.sin(a), r: 0.6 + ((i * 37) % 10) / 14 };
+});
+
+function ParticleBurst({ burst, onDone }: { burst: Burst; onDone: (id: number) => void }) {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: burst.kind === 'hit' ? 560 : 420,
+      useNativeDriver: true,
+      easing: Easing.out(Easing.cubic),
+    }).start(() => onDone(burst.id));
+  }, [progress, burst.id, burst.kind, onDone]);
+
+  const dist = burst.kind === 'hit' ? 74 : 46;
+  const size = burst.kind === 'hit' ? 7 : 5;
+  const opacity = progress.interpolate({ inputRange: [0, 0.65, 1], outputRange: [1, 0.9, 0] });
+  const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0.25] });
+
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: burst.x, top: burst.y, zIndex: 60 }}>
+      {BURST_DIRS.map((d, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            position: 'absolute',
+            width: size,
+            height: size,
+            marginLeft: -size / 2,
+            marginTop: -size / 2,
+            borderRadius: burst.kind === 'crystal' ? 1 : size / 2,
+            backgroundColor: burst.color,
+            opacity,
+            transform: [
+              { translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, d.dx * dist * d.r] }) },
+              { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [0, d.dy * dist * d.r - (burst.kind === 'crystal' ? 18 : 0)] }) },
+              { scale },
+              ...(burst.kind === 'crystal' ? [{ rotate: '45deg' as const }] : []),
+            ],
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
 // ─── Portal Flash ─────────────────────────────────────────────────────────────
 function PortalFlash({ world }: { world: World }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -432,6 +491,7 @@ interface GameSceneProps {
   playerX: Animated.Value;
   boardTilt: Animated.Value;
   jumpY: Animated.Value;
+  cameraX: Animated.Value;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
   onSwipeUp: () => void;
@@ -442,12 +502,100 @@ export function GameScene({
   playerX,
   boardTilt,
   jumpY,
+  cameraX,
   onSwipeLeft,
   onSwipeRight,
   onSwipeUp,
 }: GameSceneProps) {
   const world = WORLDS[displayState.worldIndex];
   const firedRef = useRef(false);
+
+  // ── Camera: damped horizontal pan following the player's lane ──
+  const camPan = useRef(
+    cameraX.interpolate({
+      inputRange: [LANE_X_BOTTOM[0], LANE_X_BOTTOM[2]],
+      outputRange: [(LANE_X_BOTTOM[2] - LANE_X_BOTTOM[0]) * 0.09, -(LANE_X_BOTTOM[2] - LANE_X_BOTTOM[0]) * 0.09],
+    })
+  ).current;
+
+  // ── Dynamic FOV: subtle zoom as speed climbs (quantized → rare re-renders) ──
+  const speedStep = Math.round(
+    8 *
+      Math.max(
+        0,
+        Math.min(
+          1,
+          (displayState.speed - GAME_CONFIG.INITIAL_SPEED) /
+            (GAME_CONFIG.MAX_SPEED - GAME_CONFIG.INITIAL_SPEED)
+        )
+      )
+  );
+  const fovScale = 1 + speedStep * 0.008; // up to +6.4% zoom at max speed
+
+  // ── Screen shake on collision ──
+  const shakeX = useRef(new Animated.Value(0)).current;
+  const shakeY = useRef(new Animated.Value(0)).current;
+
+  // ── Particle bursts (crystal pickups + collision) ──
+  const [bursts, setBursts] = useState<Burst[]>([]);
+  const burstIdRef = useRef(0);
+  const playerXValRef = useRef(LANE_X_BOTTOM[1]);
+  const removeBurst = useCallback((id: number) => {
+    setBursts((b) => b.filter((x) => x.id !== id));
+  }, []);
+
+  useEffect(() => {
+    const sub = playerX.addListener(({ value }) => {
+      playerXValRef.current = value;
+    });
+    return () => playerX.removeListener(sub);
+  }, [playerX]);
+
+  const prevCrystalsRef = useRef(displayState.sessionCrystals);
+  useEffect(() => {
+    if (displayState.sessionCrystals > prevCrystalsRef.current) {
+      setBursts((b) => [
+        ...b.slice(-3), // cap live bursts for Android perf
+        {
+          id: burstIdRef.current++,
+          x: playerXValRef.current,
+          y: PLAYER_Y - BOARD_H,
+          color: world.crystalColor,
+          kind: 'crystal' as const,
+        },
+      ]);
+    }
+    prevCrystalsRef.current = displayState.sessionCrystals;
+  }, [displayState.sessionCrystals, world.crystalColor]);
+
+  const prevGameOverRef = useRef(displayState.gameOver);
+  useEffect(() => {
+    if (displayState.gameOver && !prevGameOverRef.current) {
+      // Collision burst
+      setBursts((b) => [
+        ...b,
+        {
+          id: burstIdRef.current++,
+          x: playerXValRef.current,
+          y: PLAYER_Y - BOARD_H / 2,
+          color: world.obstacleColor,
+          kind: 'hit' as const,
+        },
+      ]);
+      // Small screen shake
+      const mk = (v: Animated.Value, seq: number[]) =>
+        Animated.sequence(
+          seq.map((to, i) =>
+            Animated.timing(v, { toValue: to, duration: 46 + i * 4, useNativeDriver: true })
+          )
+        );
+      Animated.parallel([
+        mk(shakeX, [-9, 8, -6, 4, -2, 0]),
+        mk(shakeY, [5, -6, 4, -3, 1, 0]),
+      ]).start();
+    }
+    prevGameOverRef.current = displayState.gameOver;
+  }, [displayState.gameOver, world.obstacleColor, shakeX, shakeY]);
 
   // Swipe detection: fires as soon as movement crosses the threshold —
   // no waiting for finger release. Horizontal beats vertical unless the
@@ -484,63 +632,82 @@ export function GameScene({
 
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: world.skyTop }]} {...panHandlers}>
-      {/* Sky gradient */}
-      <LinearGradient
-        colors={[world.skyTop, world.skyBottom]}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: HORIZON_Y + 20 }}
-      />
+      {/* World container: damped camera pan + speed FOV zoom + collision shake */}
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            transform: [
+              { translateX: Animated.add(camPan, shakeX) },
+              { translateY: shakeY },
+              { scale: fovScale },
+            ],
+          },
+        ]}
+      >
+        {/* Sky gradient */}
+        <LinearGradient
+          colors={[world.skyTop, world.skyBottom]}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: HORIZON_Y + 20 }}
+        />
 
-      <Stars world={world} />
+        <Stars world={world} />
 
-      {/* Horizon glow */}
-      <View
-        style={{
-          position: 'absolute',
-          top: HORIZON_Y - 16,
-          left: 0,
-          right: 0,
-          height: 32,
-          backgroundColor: world.horizonGlow,
-        }}
-      />
+        {/* Horizon glow */}
+        <View
+          style={{
+            position: 'absolute',
+            top: HORIZON_Y - 16,
+            left: 0,
+            right: 0,
+            height: 32,
+            backgroundColor: world.horizonGlow,
+          }}
+        />
 
-      {/* Ground gradient */}
-      <LinearGradient
-        colors={[world.groundTop, world.groundBottom]}
-        style={{ position: 'absolute', top: HORIZON_Y, left: 0, right: 0, bottom: 0 }}
-      />
+        {/* Ground gradient */}
+        <LinearGradient
+          colors={[world.groundTop, world.groundBottom]}
+          style={{ position: 'absolute', top: HORIZON_Y, left: 0, right: 0, bottom: 0 }}
+        />
 
-      <TrackLines world={world} />
-      <SpeedLines scrollOffset={displayState.scrollOffset} world={world} />
+        <TrackLines world={world} />
+        <SpeedLines scrollOffset={displayState.scrollOffset} world={world} />
 
-      {/* Crystals */}
-      {displayState.crystalObjects.map((c) => (
-        <CrystalView key={c.id} crystal={c} world={world} />
-      ))}
+        {/* Crystals */}
+        {displayState.crystalObjects.map((c) => (
+          <CrystalView key={c.id} crystal={c} world={world} />
+        ))}
 
-      {/* Obstacles */}
-      {displayState.obstacles.map((o) => (
-        <ObstacleView key={o.id} obstacle={o} world={world} />
-      ))}
+        {/* Obstacles */}
+        {displayState.obstacles.map((o) => (
+          <ObstacleView key={o.id} obstacle={o} world={world} />
+        ))}
 
-      {/* Player */}
-      <PlayerView
-        playerX={playerX}
-        boardTilt={boardTilt}
-        jumpY={jumpY}
-        forwardTiltDeg={Math.round(
-          14 *
-            Math.max(
-              0,
-              Math.min(
-                1,
-                (displayState.speed - GAME_CONFIG.INITIAL_SPEED) /
-                  (GAME_CONFIG.MAX_SPEED - GAME_CONFIG.INITIAL_SPEED)
+        {/* Player */}
+        <PlayerView
+          playerX={playerX}
+          boardTilt={boardTilt}
+          jumpY={jumpY}
+          forwardTiltDeg={Math.round(
+            14 *
+              Math.max(
+                0,
+                Math.min(
+                  1,
+                  (displayState.speed - GAME_CONFIG.INITIAL_SPEED) /
+                    (GAME_CONFIG.MAX_SPEED - GAME_CONFIG.INITIAL_SPEED)
+                )
               )
-            )
-        )}
-        world={world}
-      />
+          )}
+          world={world}
+        />
+
+        {/* Particle bursts */}
+        {bursts.map((b) => (
+          <ParticleBurst key={b.id} burst={b} onDone={removeBurst} />
+        ))}
+      </Animated.View>
 
       {/* Portal transition flash */}
       {displayState.showPortal && <PortalFlash key={displayState.worldIndex} world={world} />}

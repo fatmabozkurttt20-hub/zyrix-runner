@@ -1,5 +1,5 @@
-import React from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { WORLDS } from '@/constants/game';
@@ -21,6 +21,23 @@ export function HUD({ displayState, onPause }: HUDProps) {
   const topPad = insets.top + (Platform.OS === 'web' ? 67 : 0);
   const world = WORLDS[displayState.worldIndex];
 
+  // Smooth pop animation when crystals are collected (score bumps with them)
+  const scorePop = useRef(new Animated.Value(1)).current;
+  const crystalPop = useRef(new Animated.Value(1)).current;
+  const prevCrystals = useRef(displayState.sessionCrystals);
+
+  useEffect(() => {
+    if (displayState.sessionCrystals > prevCrystals.current) {
+      const pop = (v: Animated.Value, to: number) =>
+        Animated.sequence([
+          Animated.timing(v, { toValue: to, duration: 110, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+          Animated.spring(v, { toValue: 1, useNativeDriver: true, damping: 9, stiffness: 220 }),
+        ]);
+      Animated.parallel([pop(scorePop, 1.14), pop(crystalPop, 1.3)]).start();
+    }
+    prevCrystals.current = displayState.sessionCrystals;
+  }, [displayState.sessionCrystals, scorePop, crystalPop]);
+
   return (
     <View style={[styles.container, { paddingTop: topPad + 8 }]} pointerEvents="box-none">
       {/* Top row: distance | score | pause */}
@@ -33,9 +50,9 @@ export function HUD({ displayState, onPause }: HUDProps) {
         </View>
 
         {/* Score */}
-        <View style={styles.scoreBox}>
+        <Animated.View style={[styles.scoreBox, { transform: [{ scale: scorePop }] }]}>
           <Text style={styles.scoreText}>{displayState.score.toLocaleString()}</Text>
-        </View>
+        </Animated.View>
 
         {/* Pause */}
         <TouchableOpacity
@@ -48,10 +65,10 @@ export function HUD({ displayState, onPause }: HUDProps) {
       </View>
 
       {/* Crystal counter */}
-      <View style={styles.crystalRow}>
+      <Animated.View style={[styles.crystalRow, { transform: [{ scale: crystalPop }] }]}>
         <Ionicons name="diamond" size={14} color={colors.dark.crystal} />
         <Text style={styles.crystalText}>{displayState.sessionCrystals}</Text>
-      </View>
+      </Animated.View>
     </View>
   );
 }

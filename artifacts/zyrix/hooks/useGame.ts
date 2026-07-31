@@ -293,6 +293,9 @@ export function useGame(hapticsEnabled = true) {
   const playerX = useRef(new Animated.Value(LANE_X_BOTTOM[1])).current;
   const boardTilt = useRef(new Animated.Value(0)).current;
   const jumpY = useRef(new Animated.Value(0)).current;
+  // Damped follow camera — trails the player's lane with a soft spring (visual only)
+  const cameraX = useRef(new Animated.Value(LANE_X_BOTTOM[1])).current;
+  const cameraAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const playerLaneRef = useRef<0 | 1 | 2>(1);
   const animFrameRef = useRef<ReturnType<typeof requestAnimationFrame> | undefined>(undefined);
   const gameOverCallbackRef = useRef<((score: number, crystals: number, distance: number) => void) | null>(null);
@@ -381,6 +384,8 @@ export function useGame(hapticsEnabled = true) {
       playerX.setValue(LANE_X_BOTTOM[1]);
       boardTilt.setValue(0);
       jumpY.setValue(0);
+      cameraAnimRef.current?.stop();
+      cameraX.setValue(LANE_X_BOTTOM[1]);
       syncDisplay();
       startLoop();
     },
@@ -450,9 +455,20 @@ export function useGame(hapticsEnabled = true) {
       ]);
       laneAnimRef.current.start();
 
+      // Camera follows with soft damping — lags slightly behind the board
+      cameraAnimRef.current?.stop();
+      cameraAnimRef.current = Animated.spring(cameraX, {
+        toValue: LANE_X_BOTTOM[next],
+        useNativeDriver: true,
+        damping: 16,
+        stiffness: 70,
+        mass: 1,
+      });
+      cameraAnimRef.current.start();
+
       if (hapticsEnabled) Haptics.selectionAsync();
     },
-    [playerX, boardTilt, hapticsEnabled]
+    [playerX, boardTilt, cameraX, hapticsEnabled]
   );
 
   /**
@@ -470,13 +486,21 @@ export function useGame(hapticsEnabled = true) {
     if (hapticsEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, [hapticsEnabled]);
 
-  useEffect(() => () => stopLoop(), [stopLoop]);
+  useEffect(
+    () => () => {
+      stopLoop();
+      laneAnimRef.current?.stop();
+      cameraAnimRef.current?.stop();
+    },
+    [stopLoop]
+  );
 
   return {
     displayState,
     playerX,
     boardTilt,
     jumpY,
+    cameraX,
     startGame,
     pauseGame,
     resumeGame,

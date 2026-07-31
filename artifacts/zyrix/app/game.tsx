@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { GameScene } from '@/components/game/GameScene';
@@ -9,11 +9,21 @@ import { usePlayer } from '@/context/PlayerContext';
 
 export default function GameScreen() {
   const { hapticsEnabled, addCrystals, updateHighScore, incrementRuns } = usePlayer();
+  const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cancel any pending game-over navigation if the screen unmounts
+  useEffect(
+    () => () => {
+      if (navTimerRef.current) clearTimeout(navTimerRef.current);
+    },
+    []
+  );
   const {
     displayState,
     playerX,
     boardTilt,
     jumpY,
+    cameraX,
     startGame,
     pauseGame,
     resumeGame,
@@ -26,14 +36,18 @@ export default function GameScreen() {
       updateHighScore(score);
       addCrystals(crystals);
       incrementRuns();
-      router.replace({
-        pathname: '/gameover',
-        params: {
-          score: String(score),
-          crystals: String(crystals),
-          distance: String(distance),
-        },
-      });
+      // Brief hold so the collision burst + screen shake are visible
+      if (navTimerRef.current) clearTimeout(navTimerRef.current);
+      navTimerRef.current = setTimeout(() => {
+        router.replace({
+          pathname: '/gameover',
+          params: {
+            score: String(score),
+            crystals: String(crystals),
+            distance: String(distance),
+          },
+        });
+      }, 700);
     },
     [updateHighScore, addCrystals, incrementRuns]
   );
@@ -61,6 +75,7 @@ export default function GameScreen() {
         playerX={playerX}
         boardTilt={boardTilt}
         jumpY={jumpY}
+        cameraX={cameraX}
         onSwipeLeft={onSwipeLeft}
         onSwipeRight={onSwipeRight}
         onSwipeUp={handleJump}
