@@ -782,6 +782,297 @@ function Stars({ world }: { world: World }) {
 }
 
 // ─── Main GameScene ───────────────────────────────────────────────────────────
+// ─── Neon Billboards (animated scan bar, one shared loop) ────────────────────
+const BILLBOARDS = [
+  { x: SCREEN_W * 0.16, y: HORIZON_Y - 80, w: 36, h: 18 },
+  { x: SCREEN_W * 0.64, y: HORIZON_Y - 94, w: 44, h: 22 },
+];
+
+function NeonBillboards({ world }: { world: World }) {
+  const scan = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.timing(scan, { toValue: 1, duration: 2400, useNativeDriver: true, easing: Easing.inOut(Easing.quad) })
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [scan]);
+
+  return (
+    <>
+      {BILLBOARDS.map((b, i) => (
+        <View
+          key={i}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: b.x,
+            top: b.y,
+            width: b.w,
+            height: b.h,
+            borderRadius: 2,
+            borderWidth: 1,
+            borderColor: i === 0 ? world.trackColor : world.accentColor,
+            backgroundColor: '#070A18',
+            overflow: 'hidden',
+          }}
+        >
+          {/* static "content" rows */}
+          <View style={{ position: 'absolute', left: 4, top: 4, width: b.w * 0.55, height: 2, borderRadius: 1, backgroundColor: world.trackColor, opacity: 0.7 }} />
+          <View style={{ position: 'absolute', left: 4, top: 9, width: b.w * 0.35, height: 2, borderRadius: 1, backgroundColor: world.accentColor, opacity: 0.55 }} />
+          {/* sweeping light bar */}
+          <Animated.View
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              width: 8,
+              backgroundColor: i === 0 ? world.trackColor : world.accentColor,
+              opacity: 0.28,
+              transform: [
+                {
+                  translateX: scan.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: i === 0 ? [-10, b.w + 4] : [b.w + 4, -10],
+                  }),
+                },
+              ],
+            }}
+          />
+        </View>
+      ))}
+    </>
+  );
+}
+
+// ─── Flying Vehicles (distant ambience) ──────────────────────────────────────
+const VEHICLES = [
+  { y: HORIZON_Y - 118, dur: 11000, dir: 1, size: 7 },
+  { y: HORIZON_Y - 142, dur: 16000, dir: -1, size: 5 },
+  { y: HORIZON_Y - 100, dur: 13000, dir: 1, size: 6 },
+];
+
+function FlyingVehicles({ world }: { world: World }) {
+  const ts = useRef(VEHICLES.map(() => new Animated.Value(0))).current;
+  useEffect(() => {
+    const anims = ts.map((v, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 2600),
+          Animated.timing(v, { toValue: 1, duration: VEHICLES[i].dur, useNativeDriver: true, easing: Easing.linear }),
+          Animated.timing(v, { toValue: 0, duration: 0, useNativeDriver: true }),
+        ])
+      )
+    );
+    anims.forEach((a) => a.start());
+    return () => anims.forEach((a) => a.stop());
+  }, [ts]);
+
+  return (
+    <>
+      {VEHICLES.map((veh, i) => (
+        <Animated.View
+          key={i}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: veh.y,
+            left: 0,
+            flexDirection: 'row',
+            alignItems: 'center',
+            opacity: ts[i].interpolate({ inputRange: [0, 0.06, 0.94, 1], outputRange: [0, 0.8, 0.8, 0] }),
+            transform: [
+              {
+                translateX: ts[i].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: veh.dir === 1 ? [-30, SCREEN_W + 30] : [SCREEN_W + 30, -30],
+                }),
+              },
+            ],
+          }}
+        >
+          {/* light streak + hull + nav light */}
+          <View style={{ width: veh.size * 1.6, height: 1.5, backgroundColor: world.trackColor, opacity: 0.35, borderRadius: 1 }} />
+          <View style={{ width: veh.size, height: 2.5, borderRadius: 1.5, backgroundColor: '#1A2138', marginLeft: 1 }} />
+          <View style={{ width: 2, height: 2, borderRadius: 1, backgroundColor: world.accentColor, marginLeft: 1 }} />
+        </Animated.View>
+      ))}
+    </>
+  );
+}
+
+// ─── Scripted First-30s Set Pieces (visual only) ─────────────────────────────
+// A boost-ramp strip sweeps under the player (~11s) and the track visually
+// narrows (~18–24s). Pure render-layer: lanes/collision are untouched.
+const RAMP_START = 11000;
+const RAMP_DUR = 2400;
+const NARROW_START = 17500;
+const NARROW_END = 24500;
+
+function SetPieces({ elapsedMs, world }: { elapsedMs: number; world: World }) {
+  const items = [];
+
+  // — Boost ramp strip —
+  const rp = (elapsedMs - RAMP_START) / RAMP_DUR;
+  if (rp > 0 && rp < 1.08) {
+    const e = Math.pow(Math.min(rp, 1), 0.85);
+    const y = HORIZON_Y + (PLAYER_Y + 40 - HORIZON_Y) * e;
+    const leftX = VP_X + (TRACK_LEFT_X - VP_X) * e;
+    const rightX = VP_X + (TRACK_RIGHT_X - VP_X) * e;
+    const h = 4 + 30 * e;
+    items.push(
+      <View key="ramp" pointerEvents="none" style={{ position: 'absolute', left: leftX, top: y - h, width: rightX - leftX, height: h }}>
+        <LinearGradient colors={['rgba(34,229,255,0)', world.trackColor]} style={{ flex: 1, opacity: 0.32 + 0.3 * e }} />
+        {/* chevrons */}
+        <View style={{ position: 'absolute', left: '30%', top: '30%', width: '12%', height: 2, backgroundColor: '#CFFAFF', opacity: 0.8, transform: [{ rotate: '18deg' }] }} />
+        <View style={{ position: 'absolute', right: '30%', top: '30%', width: '12%', height: 2, backgroundColor: '#CFFAFF', opacity: 0.8, transform: [{ rotate: '-18deg' }] }} />
+      </View>
+    );
+    // launch flare as it passes under the board
+    if (rp > 0.9) {
+      const f = 1 - Math.min(1, (rp - 0.9) / 0.18);
+      items.push(
+        <View
+          key="rampflare"
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: TRACK_LEFT_X,
+            top: PLAYER_Y - 6,
+            width: TRACK_RIGHT_X - TRACK_LEFT_X,
+            height: 16,
+            borderRadius: 8,
+            backgroundColor: world.trackColor,
+            opacity: 0.3 * f,
+          }}
+        />
+      );
+    }
+  }
+
+  // — Narrow section: inner rails converge, side floors dim —
+  if (elapsedMs > NARROW_START && elapsedMs < NARROW_END) {
+    const fadeIn = Math.min(1, (elapsedMs - NARROW_START) / 800);
+    const fadeOut = Math.min(1, (NARROW_END - elapsedMs) / 800);
+    const f = Math.min(fadeIn, fadeOut);
+    const inset = (TRACK_RIGHT_X - TRACK_LEFT_X) * 0.13;
+    items.push(
+      <Svg key="narrow" width={SCREEN_W} height={TRACK_H} style={[StyleSheet.absoluteFill, { top: HORIZON_Y }]} pointerEvents="none">
+        <Line x1={VP_X} y1={0} x2={TRACK_LEFT_X + inset} y2={TRACK_H} stroke={world.accentColor} strokeWidth={2} opacity={0.75 * f} />
+        <Line x1={VP_X} y1={0} x2={TRACK_RIGHT_X - inset} y2={TRACK_H} stroke={world.accentColor} strokeWidth={2} opacity={0.75 * f} />
+        {/* dimmed shoulder wedges */}
+        <Path d={`M${VP_X} 0 L${TRACK_LEFT_X} ${TRACK_H} L${TRACK_LEFT_X + inset} ${TRACK_H} Z`} fill="#02040C" opacity={0.5 * f} />
+        <Path d={`M${VP_X} 0 L${TRACK_RIGHT_X} ${TRACK_H} L${TRACK_RIGHT_X - inset} ${TRACK_H} Z`} fill="#02040C" opacity={0.5 * f} />
+      </Svg>
+    );
+  }
+
+  return <>{items}</>;
+}
+
+// ─── 30s Portal (visual only — player passes through, same world) ────────────
+function Portal30({ progress, world }: { progress: number; world: World }) {
+  if (progress < 0 || progress > 1.25) return null;
+  const e = Math.pow(Math.min(progress, 1), 0.85);
+  const y = HORIZON_Y + (PLAYER_Y - HORIZON_Y) * e;
+  const size = 16 + (SCREEN_W * 1.25 - 16) * e * e;
+  const cx = VP_X;
+  const op = progress > 1 ? Math.max(0, 1 - (progress - 1) * 4) : 0.35 + 0.65 * e;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: cx - size / 2, top: y - size / 2 - size * 0.12, width: size, height: size, opacity: op }}>
+      {/* soft core */}
+      <View style={{ position: 'absolute', left: '18%', top: '18%', width: '64%', height: '64%', borderRadius: 999, backgroundColor: world.trackColor, opacity: 0.10 }} />
+      {/* outer ring */}
+      <View
+        style={{
+          position: 'absolute',
+          left: 0, top: 0, right: 0, bottom: 0,
+          borderRadius: 999,
+          borderWidth: Math.max(2, size * 0.035),
+          borderColor: world.trackColor,
+          shadowColor: world.trackColor,
+          shadowOffset: { width: 0, height: 0 },
+          shadowRadius: 24,
+          shadowOpacity: 0.9,
+          elevation: 10,
+        }}
+      />
+      {/* inner ring */}
+      <View
+        style={{
+          position: 'absolute',
+          left: '8%', top: '8%', width: '84%', height: '84%',
+          borderRadius: 999,
+          borderWidth: Math.max(1, size * 0.014),
+          borderColor: '#EAFDFF',
+          opacity: 0.75,
+        }}
+      />
+    </View>
+  );
+}
+
+// ─── Cinematic Intro: energy beam + rider drop + camera pull-in ──────────────
+const INTRO_MS = 1700;
+
+/** Replays the intro whenever `runKey` changes (a new run started). */
+function useIntroCinematic(runKey: number) {
+  const introT = useRef(new Animated.Value(0)).current; // camera pull-in
+  const dropT = useRef(new Animated.Value(0)).current; // rider drop
+  const beamT = useRef(new Animated.Value(0)).current; // energy beam opacity
+
+  useEffect(() => {
+    introT.setValue(0);
+    dropT.setValue(0);
+    beamT.setValue(0);
+    const anim = Animated.parallel([
+      Animated.timing(introT, { toValue: 1, duration: INTRO_MS, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+      Animated.sequence([
+        Animated.timing(beamT, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.delay(420),
+        Animated.timing(beamT, { toValue: 0, duration: 380, useNativeDriver: true }),
+      ]),
+      Animated.sequence([
+        Animated.delay(240),
+        Animated.timing(dropT, { toValue: 1, duration: 820, useNativeDriver: true, easing: Easing.out(Easing.back(1.4)) }),
+      ]),
+    ]);
+    anim.start();
+    return () => anim.stop();
+  }, [introT, dropT, beamT, runKey]);
+
+  return {
+    introScale: introT.interpolate({ inputRange: [0, 1], outputRange: [1.12, 1] }),
+    introShiftY: introT.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }),
+    dropY: dropT.interpolate({ inputRange: [0, 1], outputRange: [-SCREEN_W * 0.9, 0] }),
+    beamT,
+  };
+}
+
+function EnergyBeam({ beamT, world }: { beamT: Animated.Value; world: World }) {
+  const BEAM_W = 26;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: LANE_X_BOTTOM[1] - BEAM_W / 2,
+        top: 0,
+        width: BEAM_W,
+        height: PLAYER_Y + 6,
+        opacity: beamT,
+      }}
+    >
+      <LinearGradient
+        colors={['rgba(34,229,255,0)', world.trackColor, '#EAFDFF']}
+        style={{ flex: 1, borderRadius: BEAM_W / 2 }}
+      />
+      {/* hot core */}
+      <View style={{ position: 'absolute', left: BEAM_W * 0.36, top: 0, bottom: 0, width: BEAM_W * 0.28, borderRadius: BEAM_W * 0.14, backgroundColor: '#FFFFFF', opacity: 0.65 }} />
+    </Animated.View>
+  );
+}
+
 interface GameSceneProps {
   displayState: GameDisplayState;
   playerX: Animated.Value;
@@ -805,6 +1096,40 @@ export function GameScene({
 }: GameSceneProps) {
   const world = WORLDS[displayState.worldIndex];
   const firedRef = useRef(false);
+
+  // ── Per-run key: increments whenever the run clock resets (restart) ──
+  const [runKey, setRunKey] = useState(0);
+  const prevElapsedRef = useRef(0);
+  useEffect(() => {
+    if (displayState.elapsedMs + 500 < prevElapsedRef.current) {
+      setRunKey((k) => k + 1);
+      setP30Flash(false);
+      prevP30Ref.current = -1;
+    }
+    prevElapsedRef.current = displayState.elapsedMs;
+  }, [displayState.elapsedMs]);
+
+  // ── Cinematic intro (replays each run) ──
+  const { introScale, introShiftY, dropY, beamT } = useIntroCinematic(runKey);
+  const introDone = displayState.elapsedMs > INTRO_MS + 400;
+
+  // ── Gentle track sway during the first 30s (visual curve illusion) ──
+  let swayPx = 0;
+  const el = displayState.elapsedMs;
+  if (el > 3000 && el < 30000) {
+    const fade = Math.min(1, (el - 3000) / 2000) * (el > 26000 ? Math.max(0, (30000 - el) / 4000) : 1);
+    swayPx = Math.round(Math.sin((el / 4200) * Math.PI * 2) * 9 * fade);
+  }
+
+  // ── One-shot flash when the 30s portal engulfs the player ──
+  const [p30Flash, setP30Flash] = useState(false);
+  const prevP30Ref = useRef(-1);
+  useEffect(() => {
+    if (displayState.portal30 >= 0.96 && prevP30Ref.current < 0.96 && prevP30Ref.current >= 0) {
+      setP30Flash(true);
+    }
+    prevP30Ref.current = displayState.portal30;
+  }, [displayState.portal30]);
 
   // ── Camera: damped horizontal pan following the player's lane ──
   const camPan = useRef(
@@ -935,8 +1260,12 @@ export function GameScene({
           {
             transform: [
               { translateX: Animated.add(camPan, shakeX) },
+              { translateX: swayPx },
               { translateY: shakeY },
+              { translateY: introShiftY },
               { scale: fovScale },
+              { scale: introScale },
+              { rotate: `${(swayPx * 0.06).toFixed(2)}deg` },
             ],
           },
         ]}
@@ -952,6 +1281,8 @@ export function GameScene({
         {/* Cyber city skyline behind the horizon */}
         <CitySilhouette world={world} />
         <CityNeon world={world} />
+        <NeonBillboards world={world} />
+        <FlyingVehicles world={world} />
 
         {/* Horizon glow */}
         <View
@@ -975,6 +1306,12 @@ export function GameScene({
         <SpeedLines scrollOffset={displayState.scrollOffset} world={world} />
         <TrackSideFX scrollOffset={displayState.scrollOffset} world={world} />
 
+        {/* Scripted first-30s set pieces: boost ramp + narrow section */}
+        <SetPieces elapsedMs={displayState.elapsedMs} world={world} />
+
+        {/* 30s portal (visual only) */}
+        <Portal30 progress={displayState.portal30} world={world} />
+
         {/* Atmospheric fog at the horizon */}
         <DistanceFog world={world} />
 
@@ -991,7 +1328,14 @@ export function GameScene({
           <ObstacleView key={o.id} obstacle={o} world={world} />
         ))}
 
-        {/* Player */}
+        {/* Intro energy beam */}
+        {!introDone && <EnergyBeam beamT={beamT} world={world} />}
+
+        {/* Player — wrapped in intro drop transform */}
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { transform: [{ translateY: dropY }] }]}
+        >
         <PlayerView
           playerX={playerX}
           boardTilt={boardTilt}
@@ -1009,6 +1353,7 @@ export function GameScene({
           )}
           world={world}
         />
+        </Animated.View>
 
         {/* Particle bursts */}
         {bursts.map((b) => (
@@ -1018,6 +1363,9 @@ export function GameScene({
 
       {/* Portal transition flash */}
       {displayState.showPortal && <PortalFlash key={displayState.worldIndex} world={world} />}
+
+      {/* 30s portal pass-through flash */}
+      {p30Flash && <PortalFlash key={`p30-${runKey}`} world={world} />}
 
       {Platform.OS === 'web' && <View style={{ height: 34 }} />}
     </View>

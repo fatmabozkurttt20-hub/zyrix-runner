@@ -45,6 +45,10 @@ interface GameRef {
   scrollOffset: number;
   showPortal: boolean;
   portalTimer: number;
+  /** Total run time in ms — drives scripted first-30s set pieces (visual only). */
+  elapsedMs: number;
+  /** Visual-only 30s portal: -1 = not started, 0..1.3 = approach progress. */
+  portal30: number;
   jumping: boolean;
   jumpTimer: number;
   lastTs: number;
@@ -71,6 +75,8 @@ function makeGameRef(): GameRef {
     scrollOffset: 0,
     showPortal: false,
     portalTimer: 0,
+    elapsedMs: 0,
+    portal30: -1,
     jumping: false,
     jumpTimer: 0,
     lastTs: 0,
@@ -92,6 +98,10 @@ export interface GameDisplayState {
   scrollOffset: number;
   /** Current forward speed — read-only, used for visual effects only. */
   speed: number;
+  /** Run time in ms — read-only, drives scripted visual set pieces. */
+  elapsedMs: number;
+  /** Visual-only 30s portal approach: -1 inactive, 0..1.3 approaching/past. */
+  portal30: number;
   obstacles: SpawnedObstacle[];
   crystalObjects: SpawnedCrystal[];
 }
@@ -109,6 +119,8 @@ function makeDisplayState(): GameDisplayState {
     showPortal: false,
     scrollOffset: 0,
     speed: GAME_CONFIG.INITIAL_SPEED,
+    elapsedMs: 0,
+    portal30: -1,
     obstacles: [],
     crystalObjects: [],
   };
@@ -185,6 +197,28 @@ function spawnCrystals(g: GameRef) {
   }
 }
 
+/**
+ * Scripted opening reward: one long, beautiful crystal line that guides the
+ * player through the first stretch — center lane, drifting right, back to
+ * center. Purely additive; normal random spawning continues afterward.
+ */
+const GUIDE_LINE: Array<{ lane: 0 | 1 | 2; delay: number }> = [
+  { lane: 1, delay: 0.30 }, { lane: 1, delay: 0.44 }, { lane: 1, delay: 0.58 },
+  { lane: 2, delay: 0.76 }, { lane: 2, delay: 0.90 }, { lane: 2, delay: 1.04 },
+  { lane: 1, delay: 1.22 }, { lane: 1, delay: 1.36 }, { lane: 1, delay: 1.50 },
+];
+
+function seedGuideLine(g: GameRef) {
+  for (const { lane, delay } of GUIDE_LINE) {
+    g.crystalObjects.push({
+      id: `c${g.idCounter++}`,
+      lane,
+      progress: -delay,
+      collected: false,
+    });
+  }
+}
+
 // ─── Audio Event Hooks ────────────────────────────────────────────────────────
 export interface GameSounds {
   pickup?: () => void;
@@ -201,6 +235,13 @@ function tick(
   sounds: GameSounds,
   onGameOver: (score: number, crystals: number, distance: number) => void
 ): boolean {
+  // 0. Run clock + visual-only 30s portal
+  g.elapsedMs += dt;
+  if (g.portal30 === -1 && g.elapsedMs >= 30000) g.portal30 = 0;
+  if (g.portal30 >= 0 && g.portal30 < 1.3) {
+    g.portal30 += g.speed * (dt / 1000) * 0.55; // approaches like a track object
+  }
+
   // 1. Speed ramp
   g.speed = Math.min(g.speed + GAME_CONFIG.SPEED_RAMP * dt, GAME_CONFIG.MAX_SPEED);
 
@@ -329,6 +370,8 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
       showPortal: g.showPortal,
       scrollOffset: g.scrollOffset,
       speed: g.speed,
+      elapsedMs: g.elapsedMs,
+      portal30: g.portal30,
       obstacles: [...g.obstacles],
       crystalObjects: [...g.crystalObjects],
     });
@@ -392,6 +435,10 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
       const g = makeGameRef();
       g.running = true;
       g.worldIndex = worldIndex;
+      // Cinematic opening: hold the first obstacle back slightly so the
+      // rider-drop intro and the crystal guide line own the first seconds.
+      g.nextObstacleIn = 2800;
+      seedGuideLine(g);
       gameRef.current = g;
 
       playerLaneRef.current = 1;
