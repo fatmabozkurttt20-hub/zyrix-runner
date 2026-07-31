@@ -109,7 +109,12 @@ export default function GameScreen() {
         onSwipeUp={handleJump}
       />
 
-      <HUD displayState={displayState} onPause={handlePause} />
+      <HUD
+        displayState={displayState}
+        onPause={handlePause}
+        soundEnabled={soundEnabled}
+        onToggleSound={toggleSound}
+      />
 
       {displayState.paused && (
         <PauseOverlay

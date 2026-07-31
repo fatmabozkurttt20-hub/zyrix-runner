@@ -9,6 +9,8 @@ import colors from '@/constants/colors';
 interface HUDProps {
   displayState: GameDisplayState;
   onPause: () => void;
+  soundEnabled: boolean;
+  onToggleSound: () => void;
 }
 
 export function formatDistance(m: number): string {
@@ -16,7 +18,7 @@ export function formatDistance(m: number): string {
   return `${(m / 1000).toFixed(1)}km`;
 }
 
-export function HUD({ displayState, onPause }: HUDProps) {
+export function HUD({ displayState, onPause, soundEnabled, onToggleSound }: HUDProps) {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === 'web' ? 67 : 0);
   const world = WORLDS[displayState.worldIndex];
@@ -54,14 +56,28 @@ export function HUD({ displayState, onPause }: HUDProps) {
           <Text style={styles.scoreText}>{displayState.score.toLocaleString()}</Text>
         </Animated.View>
 
-        {/* Pause */}
-        <TouchableOpacity
-          style={styles.pauseBtn}
-          onPress={onPause}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="pause" size={20} color={colors.dark.foreground} />
-        </TouchableOpacity>
+        {/* Sound + Pause */}
+        <View style={styles.controlsRow}>
+          <TouchableOpacity
+            style={styles.pauseBtn}
+            onPress={onToggleSound}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel={soundEnabled ? 'Mute sound' : 'Unmute sound'}
+          >
+            <Ionicons
+              name={soundEnabled ? 'volume-high' : 'volume-mute'}
+              size={20}
+              color={colors.dark.foreground}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.pauseBtn}
+            onPress={onPause}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="pause" size={20} color={colors.dark.foreground} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Crystal counter */}
@@ -111,6 +127,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'Inter_700Bold',
     letterSpacing: 2,
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   pauseBtn: {
     width: 36,
