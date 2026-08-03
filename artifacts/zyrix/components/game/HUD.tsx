@@ -86,6 +86,18 @@ export function HUD({ displayState, onPause, soundEnabled, onToggleSound }: HUDP
         <Text style={styles.crystalText}>{displayState.sessionCrystals}</Text>
       </Animated.View>
 
+      {/* Lives */}
+      <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6, gap: 3 }}>
+        {[0, 1, 2].map((i) => (
+          <Ionicons
+            key={i}
+            name={i < displayState.lives ? "heart" : "heart-outline"}
+            size={18}
+            color={i < displayState.lives ? "#FF4D6D" : "#777777"}
+          />
+        ))}
+      </View>
+
       {/* Overdrive meter */}
       <View style={styles.odRow}>
         <Ionicons

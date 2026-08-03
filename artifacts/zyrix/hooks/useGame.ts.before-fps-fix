@@ -538,9 +538,9 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
       portal30: g.portal30,
       overdriveMeter: g.overdriveMeter,
       overdriveActive: g.overdriveMs > 0,
-      obstacles: g.obstacles,
-      crystalObjects: g.crystalObjects,
-      orbs: g.orbs,
+      obstacles: [...g.obstacles],
+      crystalObjects: [...g.crystalObjects],
+      orbs: [...g.orbs],
     });
   }, []);
 

@@ -54,7 +54,6 @@ interface GameRef {
   running: boolean;
   paused: boolean;
   gameOver: boolean;
-  lives: number;
   score: number;
   distanceM: number;
   sessionCrystals: number;
@@ -94,7 +93,6 @@ interface GameRef {
   laneChangeFrom: 0 | 1 | 2;
   /** Remaining ms of the lane-change slide animation; 0 = settled. */
   laneChangeTimer: number;
-  invincibleMs: number;
   lastTs: number;
   idCounter: number;
 }
@@ -104,7 +102,6 @@ function makeGameRef(): GameRef {
     running: false,
     paused: false,
     gameOver: false,
-    lives: 3,
     score: 0,
     distanceM: 0,
     sessionCrystals: 0,
@@ -134,7 +131,6 @@ function makeGameRef(): GameRef {
     jumpTimer: 0,
     laneChangeFrom: 1,
     laneChangeTimer: 0,
-    invincibleMs: 0,
     lastTs: 0,
     idCounter: 0,
   };
@@ -145,7 +141,6 @@ export interface GameDisplayState {
   running: boolean;
   paused: boolean;
   gameOver: boolean;
-  lives: number;
   score: number;
   distanceM: number;
   sessionCrystals: number;
@@ -177,7 +172,6 @@ function makeDisplayState(): GameDisplayState {
     running: false,
     paused: false,
     gameOver: false,
-    lives: 3,
     score: 0,
     distanceM: 0,
     sessionCrystals: 0,
@@ -329,7 +323,6 @@ function tick(
 
   // 0. Run clock + visual-only 30s portal
   g.elapsedMs += dt;
-  g.invincibleMs = Math.max(0, g.invincibleMs - dt);
   if (g.portal30 === -1 && g.elapsedMs >= 30000) g.portal30 = 0;
   if (g.portal30 >= 0 && g.portal30 < 1.3) {
     g.portal30 += g.speed * (dt / 1000) * 0.55; // approaches like a track object
@@ -377,26 +370,18 @@ function tick(
   for (const o of g.obstacles) {
     if (
       !g.jumping &&
-        g.invincibleMs <= 0 &&
       !o.hit &&
       o.lane === collisionLane &&
       o.progress >= GAME_CONFIG.COLLISION_NEAR &&
       o.progress <= GAME_CONFIG.COLLISION_FAR
     ) {
       o.hit = true;
-      g.lives = Math.max(0, g.lives - 1);
+      g.running = false;
+      g.gameOver = true;
       sounds.crash?.();
       if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-
-      if (g.lives <= 0) {
-        g.running = false;
-        g.gameOver = true;
-        onGameOver(Math.floor(g.score), g.sessionCrystals, Math.floor(g.distanceM));
-        return false;
-      }
-
-      // Survived the hit: brief protection against immediate repeat collisions.
-      g.invincibleMs = 1200;
+      onGameOver(Math.floor(g.score), g.sessionCrystals, Math.floor(g.distanceM));
+      return false;
     }
   }
 
@@ -523,7 +508,6 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
       running: g.running,
       paused: g.paused,
       gameOver: g.gameOver,
-      lives: g.lives,
       score: Math.floor(g.score),
       distanceM: Math.floor(g.distanceM),
       sessionCrystals: g.sessionCrystals,
@@ -538,9 +522,9 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
       portal30: g.portal30,
       overdriveMeter: g.overdriveMeter,
       overdriveActive: g.overdriveMs > 0,
-      obstacles: g.obstacles,
-      crystalObjects: g.crystalObjects,
-      orbs: g.orbs,
+      obstacles: [...g.obstacles],
+      crystalObjects: [...g.crystalObjects],
+      orbs: [...g.orbs],
     });
   }, []);
 
@@ -663,7 +647,7 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
       // Stop any in-progress tilt/move
       laneAnimRef.current?.stop();
 
-      const tiltAngle = side === 'left' ? -10 : 10;
+      const tiltAngle = side === 'left' ? -22 : 22;
 
       laneAnimRef.current = Animated.parallel([
         // Slide to new lane
@@ -696,9 +680,9 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
       cameraAnimRef.current = Animated.spring(cameraX, {
         toValue: LANE_X_BOTTOM[next],
         useNativeDriver: true,
-        damping: 26,
-        stiffness: 120,
-        mass: 0.8,
+        damping: 16,
+        stiffness: 70,
+        mass: 1,
       });
       cameraAnimRef.current.start();
 

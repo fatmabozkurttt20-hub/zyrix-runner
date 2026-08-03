@@ -132,9 +132,9 @@ function ObstacleView({ obstacle, world }: { obstacle: SpawnedObstacle; world: W
         borderColor: 'rgba(255,255,255,0.55)',
         shadowColor: world.obstacleColor,
         shadowOffset: { width: 0, height: 0 },
-        shadowRadius: Math.max(2, base * 0.10),
-        shadowOpacity: 0.35,
-        elevation: 0,
+        shadowRadius: Math.max(4, base * 0.2),
+        shadowOpacity: 0.9,
+        elevation: 5,
       }}
     />
   );
@@ -391,9 +391,9 @@ function CrystalView({ crystal, world }: { crystal: SpawnedCrystal; world: World
           borderColor: 'rgba(255,255,255,0.8)',
         shadowColor: world.crystalColor,
         shadowOffset: { width: 0, height: 0 },
-        shadowRadius: Math.max(2, size * 0.20),
-        shadowOpacity: 0.35,
-        elevation: 0,
+        shadowRadius: Math.max(6, size * 0.5),
+        shadowOpacity: 1,
+        elevation: 6,
         }}
       />
       {/* Specular sparkle */}
@@ -1691,7 +1691,7 @@ export function GameScene({
   const camPan = useRef(
     cameraX.interpolate({
       inputRange: [LANE_X_BOTTOM[0], LANE_X_BOTTOM[2]],
-      outputRange: [(LANE_X_BOTTOM[2] - LANE_X_BOTTOM[0]) * 0.03, -(LANE_X_BOTTOM[2] - LANE_X_BOTTOM[0]) * 0.03],
+      outputRange: [(LANE_X_BOTTOM[2] - LANE_X_BOTTOM[0]) * 0.09, -(LANE_X_BOTTOM[2] - LANE_X_BOTTOM[0]) * 0.09],
     })
   ).current;
 
@@ -1878,7 +1878,7 @@ export function GameScene({
           {
             transform: [
               { translateX: Animated.add(camPan, shakeX) },
-              { translateX: swayPx * 0.25 },
+              { translateX: swayPx },
               {
                 translateY: Animated.add(
                   Animated.add(shakeY, Animated.multiply(rumble, rumbleAmp)),
@@ -1889,7 +1889,7 @@ export function GameScene({
               { scale: fovAnim },
               { scale: introScale },
               { rotate: camTilt },
-              { rotate: `${(swayPx * 0.015).toFixed(2)}deg` },
+              { rotate: `${(swayPx * 0.06).toFixed(2)}deg` },
             ],
           },
         ]}
