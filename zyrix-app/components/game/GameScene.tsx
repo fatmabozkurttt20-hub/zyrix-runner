@@ -1369,15 +1369,15 @@ function Countdown({ countdownMs, elapsedMs, world }: { countdownMs: number; ela
     <View pointerEvents="none" style={{ position: 'absolute', top: HORIZON_Y + 44, left: 0, right: 0, alignItems: 'center' }}>
       <Animated.Text
         style={{
-          fontSize: isGo ? 66 : 78,
+          fontSize: isGo ? 54 : 64,
           fontWeight: '900',
           letterSpacing: isGo ? 8 : 2,
           color: isGo ? world.trackColor : '#EAFDFF',
           textShadowColor: world.trackColor,
           textShadowOffset: { width: 0, height: 0 },
-          textShadowRadius: 26,
+          textShadowRadius: 14,
           opacity: pop.interpolate({ inputRange: [0, 0.12, 0.75, 1], outputRange: [0, 1, 0.95, 0.7] }),
-          transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [1.45, 1] }) }],
+          transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [1.18, 1] }) }],
         }}
       >
         {COUNT_STEPS[step]}
@@ -1706,7 +1706,7 @@ function useIntroCinematic(runKey: number) {
 }
 
 function EnergyBeam({ beamT, world }: { beamT: Animated.Value; world: World }) {
-  const BEAM_W = 26;
+  const BEAM_W = 14;
   return (
     <Animated.View
       pointerEvents="none"
@@ -1720,11 +1720,11 @@ function EnergyBeam({ beamT, world }: { beamT: Animated.Value; world: World }) {
       }}
     >
       <LinearGradient
-        colors={['rgba(34,229,255,0)', world.trackColor, '#EAFDFF']}
+        colors={['rgba(34,229,255,0)', world.trackColor, 'rgba(234,253,255,0.28)']}
         style={{ flex: 1, borderRadius: BEAM_W / 2 }}
       />
       {/* hot core */}
-      <View style={{ position: 'absolute', left: BEAM_W * 0.36, top: 0, bottom: 0, width: BEAM_W * 0.28, borderRadius: BEAM_W * 0.14, backgroundColor: '#FFFFFF', opacity: 0.65 }} />
+      <View style={{ position: 'absolute', left: BEAM_W * 0.36, top: 0, bottom: 0, width: BEAM_W * 0.18, borderRadius: BEAM_W * 0.09, backgroundColor: '#EAFDFF', opacity: 0.28 }} />
     </Animated.View>
   );
 }

@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     zIndex: 50,
   },
   topRow: {
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     minWidth: 76,
   },
   distanceText: {
-    fontSize: 24,
+    fontSize: 21,
     fontFamily: 'Inter_700Bold',
     letterSpacing: 1,
     textShadowColor: 'rgba(0,229,255,0.6)',
@@ -154,14 +154,14 @@ const styles = StyleSheet.create({
   },
   scoreText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: 'Inter_700Bold',
     letterSpacing: 2,
   },
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   pauseBtn: {
     width: 36,
