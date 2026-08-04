@@ -41,7 +41,9 @@ jobs:
 
       - name: Generate Android project
         working-directory: zyrix-app
-        run: npx expo prebuild --platform android --non-interactive --clean
+        env:
+          CI: 1
+        run: pnpm exec expo prebuild --platform android --clean
 
       - name: Build APK
         working-directory: zyrix-app/android
