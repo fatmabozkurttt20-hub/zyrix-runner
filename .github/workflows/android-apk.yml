@@ -17,33 +17,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: zyrix-app/pnpm-lock.yaml
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Install dependencies
+      - name: Install app dependencies
         working-directory: zyrix-app
-        run: pnpm install --frozen-lockfile
+        run: npm install
+
+      - name: Verify Expo
+        working-directory: zyrix-app
+        run: |
+          node -p "require('expo/package.json').version"
+          npx --no-install expo --version
 
       - name: Generate Android project
         working-directory: zyrix-app
         env:
           CI: 1
-        run: pnpm exec expo prebuild --platform android --clean
+        run: npx --no-install expo prebuild --platform android --clean
 
       - name: Build APK
         working-directory: zyrix-app/android
