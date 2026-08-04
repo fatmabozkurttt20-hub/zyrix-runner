@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths:
+      - 'zyrix-app/**'
+      - '.github/workflows/android-apk.yml'
 
 jobs:
   build:
@@ -17,14 +20,14 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 11
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache-dependency-path: zyrix-app/pnpm-lock.yaml
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -33,14 +36,15 @@ jobs:
           java-version: '17'
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        working-directory: zyrix-app
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Android project
-        working-directory: artifacts/zyrix
-        run: npx expo prebuild --platform android --non-interactive
+        working-directory: zyrix-app
+        run: npx expo prebuild --platform android --non-interactive --clean
 
       - name: Build APK
-        working-directory: artifacts/zyrix/android
+        working-directory: zyrix-app/android
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease
@@ -49,4 +53,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ZYRIX-APK
-          path: artifacts/zyrix/android/app/build/outputs/apk/release/*.apk
+          path: zyrix-app/android/app/build/outputs/apk/release/*.apk
