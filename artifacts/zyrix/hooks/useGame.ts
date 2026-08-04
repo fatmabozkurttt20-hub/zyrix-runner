@@ -37,7 +37,7 @@ export interface SpawnedOrb {
  * gameplay begins. While counting down the world is fully frozen — no
  * movement, score, distance, spawns, collisions, or inputs.
  */
-export const COUNTDOWN_STEP_MS = 540;
+export const COUNTDOWN_STEP_MS = 500;
 export const COUNTDOWN_MS = COUNTDOWN_STEP_MS * 3;
 
 // ─── Overdrive tuning ─────────────────────────────────────────────────────────
@@ -514,6 +514,8 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
   const cameraAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const playerLaneRef = useRef<0 | 1 | 2>(1);
   const animFrameRef = useRef<ReturnType<typeof requestAnimationFrame> | undefined>(undefined);
+  // React scene updates are intentionally throttled; physics remains RAF-driven.
+  const lastDisplaySyncRef = useRef(0);
   const gameOverCallbackRef = useRef<((score: number, crystals: number, distance: number) => void) | null>(null);
   const laneAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
@@ -582,7 +584,11 @@ export function useGame(hapticsEnabled = true, sounds: GameSounds = {}) {
         jumpY.setValue(0);
       }
 
-      syncDisplay();
+      // Keep physics at device RAF speed, but avoid rebuilding the whole React tree every frame.
+      if (now - lastDisplaySyncRef.current >= 42 || !keepGoing) {
+        lastDisplaySyncRef.current = now;
+        syncDisplay();
+      }
 
       if (!keepGoing) {
         stopLoop();

@@ -14,7 +14,8 @@
       "backgroundColor": "#090912"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.ftmbzksteam.zyrix"
     },
     "android": {
       "permissions": [

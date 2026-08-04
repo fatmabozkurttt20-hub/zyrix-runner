@@ -253,11 +253,7 @@ function ObstacleView({ obstacle, world }: { obstacle: SpawnedObstacle; world: W
         borderRadius: radius,
         borderWidth: Math.max(1, base * 0.03),
         borderColor: 'rgba(255,255,255,0.55)',
-        shadowColor: world.obstacleColor,
-        shadowOffset: { width: 0, height: 0 },
-        shadowRadius: Math.max(2, base * 0.10),
-        shadowOpacity: 0.35,
-        elevation: 0,
+        
       }}
     />
   );
@@ -297,11 +293,7 @@ function OrbView({ orb }: { orb: SpawnedOrb }) {
           backgroundColor: ORB_COLOR,
           borderWidth: Math.max(0.5, size * 0.08),
           borderColor: 'rgba(255,255,255,0.85)',
-          shadowColor: ORB_COLOR,
-          shadowOffset: { width: 0, height: 0 },
-          shadowRadius: Math.max(6, size * 0.6),
-          shadowOpacity: 1,
-          elevation: 6,
+          
         }}
       />
       {/* White energy core */}
@@ -512,11 +504,7 @@ function CrystalView({ crystal, world }: { crystal: SpawnedCrystal; world: World
           transform: [{ rotate: '45deg' }],
           borderWidth: Math.max(0.5, size * 0.06),
           borderColor: 'rgba(255,255,255,0.8)',
-        shadowColor: world.crystalColor,
-        shadowOffset: { width: 0, height: 0 },
-        shadowRadius: Math.max(2, size * 0.20),
-        shadowOpacity: 0.35,
-        elevation: 0,
+        
         }}
       />
       {/* Specular sparkle */}
@@ -945,7 +933,7 @@ const MOTES = Array.from({ length: 7 }, (_, i) => ({
   group: i % 2,
 }));
 
-function AirParticles({ world }: { world: World }) {
+const AirParticles = React.memo(function AirParticles({ world }: { world: World }) {
   const driftA = useRef(new Animated.Value(0)).current;
   const driftB = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -990,7 +978,7 @@ function AirParticles({ world }: { world: World }) {
       })}
     </>
   );
-}
+});
 
 // ─── Energy Pillars + Rail Light Strips (scroll-driven) ──────────────────────
 // Positioned from scrollOffset, which already updates per frame — no extra
@@ -1362,7 +1350,7 @@ const COUNT_STEPS = ['3', '2', '1', 'GO'];
 function Countdown({ countdownMs, elapsedMs, world }: { countdownMs: number; elapsedMs: number; world: World }) {
   // 3 → 2 → 1 while frozen; GO for the first 540ms of live gameplay
   const step = countdownMs > 0 ? 3 - Math.ceil(countdownMs / COUNTDOWN_STEP_MS) : 3;
-  const done = countdownMs <= 0 && elapsedMs > COUNTDOWN_STEP_MS;
+  const done = countdownMs <= 0 && elapsedMs > 360;
 
   const pop = useRef(new Animated.Value(0)).current;
   const prevStepRef = useRef(-1);
@@ -1371,7 +1359,7 @@ function Countdown({ countdownMs, elapsedMs, world }: { countdownMs: number; ela
     if (step !== prevStepRef.current) {
       prevStepRef.current = step;
       pop.setValue(0);
-      Animated.timing(pop, { toValue: 1, duration: 430, useNativeDriver: true, easing: Easing.out(Easing.cubic) }).start();
+      Animated.timing(pop, { toValue: 1, duration: 320, useNativeDriver: true, easing: Easing.out(Easing.cubic) }).start();
     }
   }, [step, done, pop]);
 
@@ -1389,7 +1377,7 @@ function Countdown({ countdownMs, elapsedMs, world }: { countdownMs: number; ela
           textShadowOffset: { width: 0, height: 0 },
           textShadowRadius: 26,
           opacity: pop.interpolate({ inputRange: [0, 0.12, 0.75, 1], outputRange: [0, 1, 0.95, 0.7] }),
-          transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [1.7, 1] }) }],
+          transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [1.45, 1] }) }],
         }}
       >
         {COUNT_STEPS[step]}
@@ -1464,7 +1452,7 @@ const DRONES = [
   { baseX: SCREEN_W * 0.68, y: HORIZON_Y + 88, range: SCREEN_W * 0.20, dur: 6800, size: 20 },
 ];
 
-function Drones({ world }: { world: World }) {
+const Drones = React.memo(function Drones({ world }: { world: World }) {
   const ts = useRef(DRONES.map(() => new Animated.Value(0))).current;
   useEffect(() => {
     const anims = ts.map((v, i) =>
@@ -1515,7 +1503,7 @@ function Drones({ world }: { world: World }) {
       ))}
     </>
   );
-}
+});
 
 // ─── Animated Hologram Signs beside the track ────────────────────────────────
 const HOLOS = [
@@ -1523,7 +1511,7 @@ const HOLOS = [
   { x: SCREEN_W * 0.845, y: HORIZON_Y + 112, w: 40, h: 56, flip: true },
 ];
 
-function HologramSigns({ world }: { world: World }) {
+const HologramSigns = React.memo(function HologramSigns({ world }: { world: World }) {
   const flicker = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const anim = Animated.loop(
@@ -1584,7 +1572,7 @@ function HologramSigns({ world }: { world: World }) {
       ))}
     </>
   );
-}
+});
 
 // ─── High-Speed Streaks (kick in at high speed) ──────────────────────────────
 const STREAKS = Array.from({ length: 8 }, (_, i) => {
