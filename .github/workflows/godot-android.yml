@@ -1,0 +1,33 @@
+name: ZYRIX 3D Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'zyrix-3d/**'
+      - '.github/workflows/godot-android.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Godot Android APK
+        uses: firebelley/godot-export@v7.0.0
+        with:
+          godot_executable_download_url: https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip
+          godot_export_templates_download_url: https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz
+          relative_project_path: ./zyrix-3d
+          archive_output: true
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZYRIX-3D-Android
+          path: |
+            **/*.apk
