@@ -114,7 +114,7 @@ function makeGameRef(): GameRef {
     obstacles: [],
     crystalObjects: [],
     obstacleTimer: 0,
-    nextObstacleIn: 1600,
+    nextObstacleIn: 1150,
     crystalTimer: 0,
     nextCrystalIn: 1000,
     scrollOffset: 0,
@@ -214,14 +214,14 @@ function spawnObstacle(g: GameRef) {
   // Enforce vertical spacing: never spawn while another obstacle is still
   // near the horizon — guarantees the player always has time to react and
   // make up to two lane changes between walls of obstacles.
-  if (g.obstacles.some((o) => !o.hit && o.progress < 0.3)) return;
+  if (g.obstacles.some((o) => !o.hit && o.progress < 0.18)) return;
 
   // Lanes that currently have ANY live obstacle approaching (from horizon
   // to just before the player). Counting the full window means at most 2
   // lanes can ever hold live obstacles — one lane is always clear.
   const occupiedLanes = new Set<number>(
     g.obstacles
-      .filter((o) => o.progress < 0.92 && !o.hit)
+      .filter((o) => o.progress > 0.06 && o.progress < 0.82 && !o.hit)
       .map((o) => o.lane)
   );
 
@@ -442,8 +442,8 @@ function tick(
   g.obstacleTimer += dt;
   if (g.obstacleTimer >= g.nextObstacleIn) {
     g.obstacleTimer = 0;
-    const base = Math.max(550, 1800 - g.speed * 520);
-    g.nextObstacleIn = randRange(base * 0.72, base * 1.28);
+    const base = Math.max(430, 1500 - g.speed * 430);
+    g.nextObstacleIn = randRange(base * 0.72, base * 1.12);
     spawnObstacle(g);
   }
 
