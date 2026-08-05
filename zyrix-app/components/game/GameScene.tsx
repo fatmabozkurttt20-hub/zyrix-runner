@@ -43,6 +43,111 @@ function perspPos(lane: 0 | 1 | 2, progress: number) {
 }
 
 // ─── Track Lines (SVG) ────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ZYRIX 2.0 — CYBER CITY TRACK SURFACE
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CyberTrackSurface({ world }: { world: World }) {
+  if (world.id !== 'cyber') return null;
+
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: HORIZON_Y,
+        bottom: 0,
+      }}
+    >
+      {/* main wide surf runway */}
+      <View
+        style={{
+          position: 'absolute',
+          left: SCREEN_W * 0.07,
+          right: SCREEN_W * 0.07,
+          top: 0,
+          bottom: 0,
+          overflow: 'hidden',
+        }}
+      >
+        <LinearGradient
+          colors={[
+            'rgba(78,177,235,0.20)',
+            'rgba(56,153,224,0.34)',
+            'rgba(34,108,190,0.62)',
+            'rgba(16,55,126,0.88)',
+          ]}
+          style={StyleSheet.absoluteFill}
+        />
+
+        {/* glossy central wash */}
+        <LinearGradient
+          colors={[
+            'rgba(255,255,255,0.05)',
+            'rgba(160,240,255,0.18)',
+            'rgba(255,255,255,0.03)',
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: '23%',
+            width: '54%',
+          }}
+        />
+      </View>
+
+      {/* thick side rails */}
+      <LinearGradient
+        colors={['#243B6E', '#4F78A8', '#2E487C']}
+        style={{
+          position: 'absolute',
+          left: SCREEN_W * 0.025,
+          width: SCREEN_W * 0.075,
+          top: 0,
+          bottom: 0,
+          borderRightWidth: 2,
+          borderRightColor: '#46E9FF',
+        }}
+      />
+
+      <LinearGradient
+        colors={['#243B6E', '#4F78A8', '#2E487C']}
+        style={{
+          position: 'absolute',
+          right: SCREEN_W * 0.025,
+          width: SCREEN_W * 0.075,
+          top: 0,
+          bottom: 0,
+          borderLeftWidth: 2,
+          borderLeftColor: '#B66DFF',
+        }}
+      />
+
+      {/* foreground shine */}
+      <LinearGradient
+        colors={[
+          'rgba(255,255,255,0)',
+          'rgba(94,220,255,0.14)',
+          'rgba(255,255,255,0.04)',
+        ]}
+        style={{
+          position: 'absolute',
+          left: SCREEN_W * 0.07,
+          right: SCREEN_W * 0.07,
+          bottom: 0,
+          height: '38%',
+        }}
+      />
+    </View>
+  );
+}
+
 const TrackLines = React.memo(({ world }: { world: World }) => {
   const laneHalfW = (LANE_X_BOTTOM[1] - LANE_X_BOTTOM[0]) / 2;
   const divH1 = LANE_X_BOTTOM[0] + laneHalfW;
@@ -261,6 +366,369 @@ function ObstacleView({ obstacle, world }: { obstacle: SpawnedObstacle; world: W
 
 // ─── Overdrive orb (purple energy sphere) ─────────────────────────────────────
 const ORB_COLOR = '#B44CFF';
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ZYRIX 2.0 — CYBER OBSTACLE SKINS
+// Fizik / collision sistemi değişmez. Sadece Cyber City görsel katmanıdır.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CyberObstacleSkin({
+  obstacle,
+  world,
+}: {
+  obstacle: SpawnedObstacle;
+  world: World;
+}) {
+  if (obstacle.hit) return null;
+
+  const { x, y, scale } = perspPos(obstacle.lane, obstacle.progress);
+
+  const base = Math.max(18, GAME_CONFIG.OBSTACLE_BASE_SIZE * scale);
+  const variant =
+    obstacle.id.length > 0
+      ? obstacle.id.charCodeAt(obstacle.id.length - 1) % 3
+      : 0;
+
+  // Existing ring obstacle becomes a large luminous energy hoop.
+  if (obstacle.type === 'ring') {
+    const ringSize = base * 1.48;
+
+    return (
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: x - ringSize / 2,
+          top: y - ringSize * 0.82,
+          width: ringSize,
+          height: ringSize,
+          borderRadius: ringSize / 2,
+          borderWidth: Math.max(3, 7 * scale),
+          borderColor: '#54EEFF',
+          backgroundColor: 'rgba(35,121,218,0.06)',
+          shadowColor: '#21E6FF',
+          shadowOpacity: 1,
+          shadowRadius: 16,
+          elevation: 5,
+          zIndex: 19,
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            left: '12%',
+            top: '12%',
+            right: '12%',
+            bottom: '12%',
+            borderRadius: 999,
+            borderWidth: Math.max(1, 3 * scale),
+            borderColor: 'rgba(184,113,255,0.82)',
+          }}
+        />
+
+        <View
+          style={{
+            position: 'absolute',
+            width: '46%',
+            height: 3,
+            left: '27%',
+            top: '49%',
+            borderRadius: 5,
+            backgroundColor: '#FFFFFF',
+            opacity: 0.72,
+          }}
+        />
+      </View>
+    );
+  }
+
+  // Alternate between three visual obstacle families.
+  if (variant === 0) {
+    // ENERGY GATE
+    const w = base * 1.18;
+    const h = base * 1.08;
+
+    return (
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: x - w / 2,
+          top: y - h,
+          width: w,
+          height: h,
+          zIndex: 20,
+        }}
+      >
+        {/* left pylon */}
+        <LinearGradient
+          colors={['#77F2FF', '#365CB8', '#142B61']}
+          style={{
+            position: 'absolute',
+            left: 0,
+            bottom: 0,
+            width: '22%',
+            height: '100%',
+            borderRadius: Math.max(3, 8 * scale),
+            borderWidth: 1,
+            borderColor: '#8BF7FF',
+          }}
+        />
+
+        {/* right pylon */}
+        <LinearGradient
+          colors={['#CB8AFF', '#5947BA', '#241C62']}
+          style={{
+            position: 'absolute',
+            right: 0,
+            bottom: 0,
+            width: '22%',
+            height: '100%',
+            borderRadius: Math.max(3, 8 * scale),
+            borderWidth: 1,
+            borderColor: '#D8A5FF',
+          }}
+        />
+
+        {/* top bridge */}
+        <LinearGradient
+          colors={['#284F9C', '#6379DF', '#233F85']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{
+            position: 'absolute',
+            left: '12%',
+            right: '12%',
+            top: 0,
+            height: '20%',
+            borderRadius: 7,
+            borderWidth: 1,
+            borderColor: 'rgba(168,240,255,0.78)',
+          }}
+        />
+
+        {/* energy field */}
+        <LinearGradient
+          colors={[
+            'rgba(80,235,255,0.18)',
+            'rgba(255,255,255,0.48)',
+            'rgba(183,91,255,0.18)',
+          ]}
+          style={{
+            position: 'absolute',
+            left: '23%',
+            right: '23%',
+            top: '20%',
+            bottom: '5%',
+            borderRadius: 5,
+          }}
+        />
+
+        {/* warning line */}
+        <View
+          style={{
+            position: 'absolute',
+            left: '25%',
+            right: '25%',
+            top: '53%',
+            height: Math.max(2, 4 * scale),
+            borderRadius: 6,
+            backgroundColor: '#FFEB67',
+            shadowColor: '#FFED6A',
+            shadowOpacity: 1,
+            shadowRadius: 8,
+          }}
+        />
+      </View>
+    );
+  }
+
+  if (variant === 1) {
+    // FUTURISTIC BARRIER
+    const w = base * 1.38;
+    const h = base * 0.72;
+
+    return (
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: x - w / 2,
+          top: y - h,
+          width: w,
+          height: h,
+          zIndex: 20,
+        }}
+      >
+        <LinearGradient
+          colors={['#496EB4', '#203D7A', '#152951']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: '15%',
+            bottom: 0,
+            borderRadius: Math.max(4, 11 * scale),
+            borderWidth: 1,
+            borderColor: 'rgba(114,232,255,0.75)',
+          }}
+        />
+
+        {/* glowing warning face */}
+        <View
+          style={{
+            position: 'absolute',
+            left: '9%',
+            right: '9%',
+            top: '31%',
+            height: '28%',
+            borderRadius: 5,
+            backgroundColor: '#FF4EA8',
+            opacity: 0.84,
+            shadowColor: '#FF4EA8',
+            shadowOpacity: 1,
+            shadowRadius: 10,
+          }}
+        />
+
+        {/* warning stripes */}
+        {[0, 1, 2].map(i => (
+          <View
+            key={'barrier-stripe-' + i}
+            style={{
+              position: 'absolute',
+              top: '35%',
+              left: (16 + i * 27) + '%',
+              width: '13%',
+              height: '20%',
+              borderRadius: 2,
+              backgroundColor: '#FFE867',
+              transform: [{ skewX: '-18deg' }],
+            }}
+          />
+        ))}
+
+        {/* feet */}
+        <View
+          style={{
+            position: 'absolute',
+            left: '12%',
+            bottom: -3,
+            width: '19%',
+            height: 6,
+            borderRadius: 5,
+            backgroundColor: '#0C1938',
+          }}
+        />
+        <View
+          style={{
+            position: 'absolute',
+            right: '12%',
+            bottom: -3,
+            width: '19%',
+            height: 6,
+            borderRadius: 5,
+            backgroundColor: '#0C1938',
+          }}
+        />
+      </View>
+    );
+  }
+
+  // POWER CORE / ROBOTIC CRATE
+  const size = base * 0.95;
+
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: x - size / 2,
+        top: y - size,
+        width: size,
+        height: size,
+        borderRadius: Math.max(5, 12 * scale),
+        zIndex: 20,
+        shadowColor: '#31E9FF',
+        shadowOpacity: 0.8,
+        shadowRadius: 10,
+      }}
+    >
+      <LinearGradient
+        colors={['#567AC1', '#253F82', '#172B5A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          borderRadius: Math.max(5, 12 * scale),
+          borderWidth: 1,
+          borderColor: '#75EFFF',
+        }}
+      />
+
+      <View
+        style={{
+          position: 'absolute',
+          width: '46%',
+          height: '46%',
+          left: '27%',
+          top: '27%',
+          borderRadius: 999,
+          backgroundColor: '#4DF2FF',
+          borderWidth: 2,
+          borderColor: '#E5FEFF',
+          shadowColor: '#4DF2FF',
+          shadowOpacity: 1,
+          shadowRadius: 13,
+        }}
+      />
+
+      <View
+        style={{
+          position: 'absolute',
+          width: '18%',
+          height: '18%',
+          left: '41%',
+          top: '41%',
+          borderRadius: 999,
+          backgroundColor: '#FFFFFF',
+        }}
+      />
+
+      {/* corner armor */}
+      <View
+        style={{
+          position: 'absolute',
+          left: 4,
+          top: 4,
+          width: '23%',
+          height: 4,
+          borderRadius: 3,
+          backgroundColor: '#C884FF',
+        }}
+      />
+
+      <View
+        style={{
+          position: 'absolute',
+          right: 4,
+          bottom: 4,
+          width: '23%',
+          height: 4,
+          borderRadius: 3,
+          backgroundColor: '#C884FF',
+        }}
+      />
+    </View>
+  );
+}
 
 function OrbView({ orb }: { orb: SpawnedOrb }) {
   const { x, y, scale } = perspPos(orb.lane, orb.progress);
@@ -643,6 +1111,284 @@ const BoardBody = React.memo(() => (
   </>
 ));
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ZYRIX 2.0 — MASCOT RIDER + ARCADE SURF BOARD
+// Gameplay hitbox mantığını değiştirmez; yalnızca görseldir.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CyberMascotRider({ world }: { world: World }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        width: 78,
+        height: 92,
+        left: 17,
+        top: -70,
+        alignItems: 'center',
+      }}
+    >
+      {/* ears */}
+      <View
+        style={{
+          position: 'absolute',
+          left: 12,
+          top: 9,
+          width: 18,
+          height: 22,
+          borderRadius: 10,
+          backgroundColor: '#394B73',
+          transform: [{ rotate: '-18deg' }],
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          right: 12,
+          top: 9,
+          width: 18,
+          height: 22,
+          borderRadius: 10,
+          backgroundColor: '#394B73',
+          transform: [{ rotate: '18deg' }],
+        }}
+      />
+
+      {/* head */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 14,
+          width: 54,
+          height: 50,
+          borderRadius: 24,
+          backgroundColor: '#F4F8FF',
+          borderWidth: 2,
+          borderColor: 'rgba(95,225,255,0.65)',
+          shadowColor: world.trackColor,
+          shadowOpacity: 0.8,
+          shadowRadius: 12,
+          elevation: 5,
+        }}
+      >
+        {/* visor */}
+        <LinearGradient
+          colors={['#0D2447', '#126D9B', '#37E4FF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            position: 'absolute',
+            left: 7,
+            right: 7,
+            top: 10,
+            height: 22,
+            borderRadius: 11,
+          }}
+        />
+
+        {/* eyes */}
+        <View
+          style={{
+            position: 'absolute',
+            left: 16,
+            top: 17,
+            width: 5,
+            height: 7,
+            borderRadius: 4,
+            backgroundColor: '#FFFFFF',
+          }}
+        />
+        <View
+          style={{
+            position: 'absolute',
+            right: 16,
+            top: 17,
+            width: 5,
+            height: 7,
+            borderRadius: 4,
+            backgroundColor: '#FFFFFF',
+          }}
+        />
+
+        {/* smile */}
+        <View
+          style={{
+            position: 'absolute',
+            left: 21,
+            top: 35,
+            width: 12,
+            height: 5,
+            borderBottomWidth: 2,
+            borderBottomColor: '#2C4668',
+            borderRadius: 8,
+          }}
+        />
+      </View>
+
+      {/* body */}
+      <LinearGradient
+        colors={['#FFFFFF', '#D9EEFF', '#97BFFF']}
+        style={{
+          position: 'absolute',
+          top: 57,
+          width: 42,
+          height: 31,
+          borderRadius: 15,
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.7)',
+        }}
+      />
+
+      {/* chest core */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 66,
+          width: 13,
+          height: 13,
+          borderRadius: 8,
+          backgroundColor: world.trackColor,
+          shadowColor: world.trackColor,
+          shadowOpacity: 1,
+          shadowRadius: 10,
+        }}
+      />
+
+      {/* arms */}
+      <View
+        style={{
+          position: 'absolute',
+          left: 9,
+          top: 61,
+          width: 22,
+          height: 9,
+          borderRadius: 7,
+          backgroundColor: '#C8DCFF',
+          transform: [{ rotate: '18deg' }],
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          right: 9,
+          top: 61,
+          width: 22,
+          height: 9,
+          borderRadius: 7,
+          backgroundColor: '#C8DCFF',
+          transform: [{ rotate: '-18deg' }],
+        }}
+      />
+    </View>
+  );
+}
+
+function CyberMascotBoard({ world }: { world: World }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        width: 118,
+        height: 36,
+        left: -3,
+        top: 6,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {/* underside glow */}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: -6,
+          width: 86,
+          height: 12,
+          borderRadius: 999,
+          backgroundColor: world.trackColor,
+          opacity: 0.24,
+          shadowColor: world.trackColor,
+          shadowOpacity: 1,
+          shadowRadius: 18,
+          elevation: 4,
+        }}
+      />
+
+      {/* board body */}
+      <LinearGradient
+        colors={['#FFFFFF', '#C9E6FF', '#6D8FEA']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          width: 108,
+          height: 25,
+          borderRadius: 18,
+          borderWidth: 2,
+          borderColor: 'rgba(255,255,255,0.75)',
+          transform: [{ skewX: '-8deg' }],
+          overflow: 'hidden',
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            left: 10,
+            right: 10,
+            top: 5,
+            height: 3,
+            borderRadius: 3,
+            backgroundColor: world.trackColor,
+            opacity: 0.9,
+          }}
+        />
+
+        <View
+          style={{
+            position: 'absolute',
+            left: 22,
+            right: 22,
+            bottom: 4,
+            height: 3,
+            borderRadius: 3,
+            backgroundColor: world.accentColor,
+            opacity: 0.72,
+          }}
+        />
+      </LinearGradient>
+
+      {/* anti-grav pods */}
+      <View
+        style={{
+          position: 'absolute',
+          left: 18,
+          bottom: 0,
+          width: 17,
+          height: 8,
+          borderRadius: 8,
+          backgroundColor: '#1E3E66',
+          borderWidth: 1,
+          borderColor: world.trackColor,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          right: 18,
+          bottom: 0,
+          width: 17,
+          height: 8,
+          borderRadius: 8,
+          backgroundColor: '#1E3E66',
+          borderWidth: 1,
+          borderColor: world.trackColor,
+        }}
+      />
+    </View>
+  );
+}
+
 const PlayerView = React.memo(function PlayerView({
   playerX,
   boardTilt,
@@ -746,8 +1492,8 @@ const PlayerView = React.memo(function PlayerView({
         }}
       />
 
-      <BoardBody />
-      <RiderFigure />
+      <CyberMascotBoard world={world} />
+      <CyberMascotRider world={world} />
     </Animated.View>
   );
 });
@@ -932,6 +1678,993 @@ const MOTES = Array.from({ length: 7 }, (_, i) => ({
   size: 1.5 + (i % 3),
   group: i % 2,
 }));
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ZYRIX 2.0 — CYBER CITY WORLD LAYER
+// Büyük, renkli ve hacimli mobil-runner şehir atmosferi.
+// Gameplay/collision mantığına dokunmaz; tamamen görsel katmandır.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CYBER_FAR_BUILDINGS = [
+  { x: 0.01, w: 0.11, h: 94, c: '#172B58', glow: '#38D9FF' },
+  { x: 0.10, w: 0.09, h: 138, c: '#20376E', glow: '#7C5CFF' },
+  { x: 0.19, w: 0.12, h: 82, c: '#193463', glow: '#2AF2FF' },
+  { x: 0.30, w: 0.08, h: 126, c: '#293A77', glow: '#FF63D8' },
+  { x: 0.63, w: 0.09, h: 118, c: '#24366C', glow: '#39E8FF' },
+  { x: 0.72, w: 0.12, h: 88, c: '#172C5D', glow: '#9A72FF' },
+  { x: 0.83, w: 0.08, h: 145, c: '#293A77', glow: '#42ECFF' },
+  { x: 0.91, w: 0.10, h: 104, c: '#19315D', glow: '#FF6CDF' },
+];
+
+const CYBER_SIDE_TOWERS = [
+  { side: 'left',  x: -0.10, y: 0.05, w: 0.29, h: 0.54, color: '#203E78', glow: '#34E5FF' },
+  { side: 'left',  x: -0.04, y: 0.32, w: 0.23, h: 0.46, color: '#315395', glow: '#A16BFF' },
+  { side: 'right', x: 0.82,  y: 0.08, w: 0.29, h: 0.57, color: '#22417D', glow: '#48ECFF' },
+  { side: 'right', x: 0.84,  y: 0.36, w: 0.22, h: 0.43, color: '#3A4F94', glow: '#FF62CF' },
+];
+
+function CyberWorld2({
+  world,
+  scrollOffset,
+}: {
+  world: World;
+  scrollOffset: number;
+}) {
+  if (world.id !== 'cyber') return null;
+
+  const pulse = 0.45 + Math.sin(scrollOffset * Math.PI * 2) * 0.10;
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {/* Bright futuristic daytime/nightfall sky haze */}
+      <LinearGradient
+        colors={[
+          'rgba(82,116,255,0.18)',
+          'rgba(50,215,255,0.10)',
+          'rgba(0,229,255,0)',
+        ]}
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: HORIZON_Y * 0.16,
+          height: HORIZON_Y * 0.88,
+        }}
+      />
+
+      {/* Distant sun / energy moon */}
+      <View
+        style={{
+          position: 'absolute',
+          width: SCREEN_W * 0.23,
+          height: SCREEN_W * 0.23,
+          borderRadius: SCREEN_W,
+          left: SCREEN_W * 0.385,
+          top: HORIZON_Y * 0.22,
+          backgroundColor: 'rgba(110,225,255,0.10)',
+          borderWidth: 2,
+          borderColor: 'rgba(139,236,255,0.34)',
+          shadowColor: '#69E7FF',
+          shadowOpacity: 0.85,
+          shadowRadius: 28,
+          elevation: 2,
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            width: '58%',
+            height: '58%',
+            borderRadius: 999,
+            left: '21%',
+            top: '21%',
+            backgroundColor: 'rgba(220,249,255,0.28)',
+          }}
+        />
+      </View>
+
+      {/* Far skyline */}
+      {CYBER_FAR_BUILDINGS.map((b, i) => (
+        <View
+          key={'cyber-far-' + i}
+          style={{
+            position: 'absolute',
+            left: SCREEN_W * b.x,
+            width: SCREEN_W * b.w,
+            height: b.h,
+            top: HORIZON_Y - b.h + 8,
+            backgroundColor: b.c,
+            borderTopLeftRadius: 6,
+            borderTopRightRadius: 6,
+            borderWidth: 1,
+            borderColor: 'rgba(166,225,255,0.16)',
+            opacity: 0.92,
+          }}
+        >
+          {/* illuminated roof */}
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: '12%',
+              right: '12%',
+              height: 2,
+              backgroundColor: b.glow,
+              opacity: 0.85,
+            }}
+          />
+
+          {/* windows */}
+          {[0.22, 0.46, 0.70].map((yy, j) => (
+            <View
+              key={j}
+              style={{
+                position: 'absolute',
+                top: b.h * yy,
+                left: j % 2 === 0 ? '18%' : '52%',
+                width: '25%',
+                height: 3,
+                borderRadius: 2,
+                backgroundColor: b.glow,
+                opacity: 0.48,
+              }}
+            />
+          ))}
+        </View>
+      ))}
+
+      {/* Elevated city bridge at horizon */}
+      <View
+        style={{
+          position: 'absolute',
+          top: HORIZON_Y + 7,
+          left: SCREEN_W * 0.05,
+          right: SCREEN_W * 0.05,
+          height: 5,
+          borderRadius: 4,
+          backgroundColor: 'rgba(71,136,205,0.70)',
+          borderTopWidth: 1,
+          borderTopColor: 'rgba(76,235,255,0.75)',
+        }}
+      />
+
+      {/* Massive foreground towers — creates depth/parallax */}
+      {CYBER_SIDE_TOWERS.map((t, i) => (
+        <View
+          key={'cyber-side-' + i}
+          style={{
+            position: 'absolute',
+            left: SCREEN_W * t.x,
+            top: HORIZON_Y + (PLAYER_Y - HORIZON_Y) * t.y,
+            width: SCREEN_W * t.w,
+            height: (PLAYER_Y - HORIZON_Y) * t.h,
+            backgroundColor: t.color,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: 'rgba(146,211,255,0.20)',
+            opacity: 0.94,
+            overflow: 'hidden',
+          }}
+        >
+          <LinearGradient
+            colors={[
+              'rgba(255,255,255,0.12)',
+              'rgba(69,184,255,0.05)',
+              'rgba(4,16,50,0.35)',
+            ]}
+            style={StyleSheet.absoluteFill}
+          />
+
+          <View
+            style={{
+              position: 'absolute',
+              top: 12,
+              bottom: 14,
+              width: 3,
+              borderRadius: 4,
+              backgroundColor: t.glow,
+              opacity: pulse,
+              ...(t.side === 'left' ? { right: 12 } : { left: 12 }),
+            }}
+          />
+
+          {[0.19, 0.34, 0.49, 0.64, 0.79].map((yy, j) => (
+            <View
+              key={j}
+              style={{
+                position: 'absolute',
+                top: yy * (PLAYER_Y - HORIZON_Y) * t.h,
+                left: '18%',
+                right: '18%',
+                height: 2,
+                backgroundColor:
+                  j % 2 === 0
+                    ? 'rgba(111,230,255,0.32)'
+                    : 'rgba(185,116,255,0.25)',
+              }}
+            />
+          ))}
+        </View>
+      ))}
+
+      {/* Side floating platforms */}
+      <View
+        style={{
+          position: 'absolute',
+          top: HORIZON_Y + 92,
+          left: -18,
+          width: SCREEN_W * 0.31,
+          height: 13,
+          borderRadius: 7,
+          backgroundColor: '#314F83',
+          borderTopWidth: 2,
+          borderTopColor: '#42E5FF',
+          transform: [{ rotate: '-5deg' }],
+        }}
+      />
+
+      <View
+        style={{
+          position: 'absolute',
+          top: HORIZON_Y + 124,
+          right: -22,
+          width: SCREEN_W * 0.33,
+          height: 14,
+          borderRadius: 7,
+          backgroundColor: '#354E89',
+          borderTopWidth: 2,
+          borderTopColor: '#C46DFF',
+          transform: [{ rotate: '5deg' }],
+        }}
+      />
+
+      {/* Atmospheric lower-city blue haze */}
+      <LinearGradient
+        colors={[
+          'rgba(32,185,255,0)',
+          'rgba(31,131,218,0.07)',
+          'rgba(37,78,145,0.14)',
+        ]}
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: HORIZON_Y,
+          bottom: 0,
+        }}
+      />
+    </View>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ZYRIX 2.0 — CYBER ROADSIDE PROPS
+// Büyük yol kenarı objeleri sahnenin oyuncak/arcade ölçeğini güçlendirir.
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ZYRIX 2.0 — CYBER WORLD DEPTH
+// Büyük ölçekli şehir dekorları. Gameplay / collision sisteminden bağımsızdır.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CyberWorldDepth({
+  world,
+  scrollOffset,
+}: {
+  world: World;
+  scrollOffset: number;
+}) {
+  if (world.id !== 'cyber') return null;
+
+  const pulse = 0.62 + Math.sin(scrollOffset * Math.PI * 2) * 0.16;
+  const pulse2 = 0.52 + Math.cos(scrollOffset * Math.PI * 2) * 0.14;
+
+  const leftBuildings = [
+    {
+      x: -SCREEN_W * 0.09,
+      y: HORIZON_Y - 118,
+      w: SCREEN_W * 0.23,
+      h: 154,
+      color: '#172B55',
+      neon: '#46E9FF',
+    },
+    {
+      x: -SCREEN_W * 0.035,
+      y: HORIZON_Y - 74,
+      w: SCREEN_W * 0.16,
+      h: 112,
+      color: '#213A70',
+      neon: '#8AF7FF',
+    },
+  ];
+
+  const rightBuildings = [
+    {
+      x: SCREEN_W * 0.86,
+      y: HORIZON_Y - 134,
+      w: SCREEN_W * 0.24,
+      h: 171,
+      color: '#25265E',
+      neon: '#C677FF',
+    },
+    {
+      x: SCREEN_W * 0.89,
+      y: HORIZON_Y - 66,
+      w: SCREEN_W * 0.16,
+      h: 104,
+      color: '#333474',
+      neon: '#FF70D2',
+    },
+  ];
+
+  return (
+    <View
+      pointerEvents="none"
+      style={StyleSheet.absoluteFill}
+    >
+      {/* -----------------------------------------------------
+          DISTANT MEGACITY — LEFT
+      ----------------------------------------------------- */}
+      {leftBuildings.map((b, i) => (
+        <View
+          key={'cyber-depth-left-' + i}
+          style={{
+            position: 'absolute',
+            left: b.x,
+            top: b.y,
+            width: b.w,
+            height: b.h,
+            backgroundColor: b.color,
+            borderTopRightRadius: 10,
+            borderWidth: 1,
+            borderColor: 'rgba(112,225,255,0.20)',
+            opacity: 0.96,
+          }}
+        >
+          <LinearGradient
+            colors={[
+              'rgba(100,220,255,0.18)',
+              'rgba(20,40,90,0.02)',
+              'rgba(7,17,40,0.24)',
+            ]}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderTopRightRadius: 10,
+            }}
+          />
+
+          {[0, 1, 2, 3].map(j => (
+            <View
+              key={'cyber-depth-left-window-' + i + '-' + j}
+              style={{
+                position: 'absolute',
+                right: 7 + (j % 2) * 14,
+                top: 15 + j * 27,
+                width: 8,
+                height: 13,
+                borderRadius: 2,
+                backgroundColor: b.neon,
+                opacity: j % 2 === 0 ? pulse : 0.44,
+                shadowColor: b.neon,
+                shadowOpacity: 0.9,
+                shadowRadius: 7,
+              }}
+            />
+          ))}
+
+          <View
+            style={{
+              position: 'absolute',
+              right: 3,
+              top: 8,
+              bottom: 8,
+              width: 2,
+              backgroundColor: b.neon,
+              opacity: 0.54,
+            }}
+          />
+        </View>
+      ))}
+
+      {/* -----------------------------------------------------
+          DISTANT MEGACITY — RIGHT
+      ----------------------------------------------------- */}
+      {rightBuildings.map((b, i) => (
+        <View
+          key={'cyber-depth-right-' + i}
+          style={{
+            position: 'absolute',
+            left: b.x,
+            top: b.y,
+            width: b.w,
+            height: b.h,
+            backgroundColor: b.color,
+            borderTopLeftRadius: 10,
+            borderWidth: 1,
+            borderColor: 'rgba(205,130,255,0.20)',
+            opacity: 0.96,
+          }}
+        >
+          <LinearGradient
+            colors={[
+              'rgba(213,120,255,0.18)',
+              'rgba(40,33,95,0.03)',
+              'rgba(15,15,52,0.26)',
+            ]}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderTopLeftRadius: 10,
+            }}
+          />
+
+          {[0, 1, 2, 3].map(j => (
+            <View
+              key={'cyber-depth-right-window-' + i + '-' + j}
+              style={{
+                position: 'absolute',
+                left: 8 + (j % 2) * 15,
+                top: 13 + j * 28,
+                width: 8,
+                height: 14,
+                borderRadius: 2,
+                backgroundColor: b.neon,
+                opacity: j % 2 === 0 ? pulse2 : 0.46,
+                shadowColor: b.neon,
+                shadowOpacity: 0.9,
+                shadowRadius: 7,
+              }}
+            />
+          ))}
+
+          <View
+            style={{
+              position: 'absolute',
+              left: 3,
+              top: 8,
+              bottom: 8,
+              width: 2,
+              backgroundColor: b.neon,
+              opacity: 0.56,
+            }}
+          />
+        </View>
+      ))}
+
+      {/* -----------------------------------------------------
+          DISTANT CENTRAL CITY GATE
+      ----------------------------------------------------- */}
+      <View
+        style={{
+          position: 'absolute',
+          left: SCREEN_W * 0.31,
+          top: HORIZON_Y - 54,
+          width: SCREEN_W * 0.38,
+          height: 58,
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 12,
+            width: 12,
+            height: 46,
+            borderRadius: 5,
+            backgroundColor: '#263F78',
+            borderWidth: 1,
+            borderColor: '#56EDFF',
+          }}
+        />
+
+        <View
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: 12,
+            width: 12,
+            height: 46,
+            borderRadius: 5,
+            backgroundColor: '#423270',
+            borderWidth: 1,
+            borderColor: '#C878FF',
+          }}
+        />
+
+        <LinearGradient
+          colors={[
+            '#173B72',
+            '#4474B8',
+            '#523887',
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{
+            position: 'absolute',
+            left: 5,
+            right: 5,
+            top: 5,
+            height: 13,
+            borderRadius: 7,
+            borderWidth: 1,
+            borderColor: 'rgba(181,248,255,0.72)',
+          }}
+        />
+
+        <View
+          style={{
+            position: 'absolute',
+            left: '23%',
+            right: '23%',
+            top: 8,
+            height: 3,
+            borderRadius: 4,
+            backgroundColor: '#D9FFFF',
+            opacity: pulse,
+            shadowColor: '#71F6FF',
+            shadowOpacity: 1,
+            shadowRadius: 7,
+          }}
+        />
+      </View>
+
+      {/* -----------------------------------------------------
+          LEFT HOLOGRAM BILLBOARD
+      ----------------------------------------------------- */}
+      <View
+        style={{
+          position: 'absolute',
+          left: SCREEN_W * 0.015,
+          top: HORIZON_Y + 14,
+          width: SCREEN_W * 0.19,
+          height: 64,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: '#52EFFF',
+          backgroundColor: 'rgba(13,56,104,0.72)',
+          transform: [{ rotate: '-3deg' }],
+          shadowColor: '#35E8FF',
+          shadowOpacity: 0.72,
+          shadowRadius: 12,
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            left: 8,
+            right: 8,
+            top: 9,
+            height: 5,
+            borderRadius: 4,
+            backgroundColor: '#63F4FF',
+            opacity: pulse,
+          }}
+        />
+
+        <View
+          style={{
+            position: 'absolute',
+            left: 8,
+            width: '46%',
+            top: 23,
+            height: 4,
+            borderRadius: 3,
+            backgroundColor: '#FFFFFF',
+            opacity: 0.67,
+          }}
+        />
+
+        <View
+          style={{
+            position: 'absolute',
+            left: 8,
+            width: '63%',
+            top: 34,
+            height: 4,
+            borderRadius: 3,
+            backgroundColor: '#8D92FF',
+            opacity: 0.74,
+          }}
+        />
+
+        <View
+          style={{
+            position: 'absolute',
+            left: 8,
+            width: '34%',
+            top: 45,
+            height: 4,
+            borderRadius: 3,
+            backgroundColor: '#FF75C8',
+            opacity: 0.72,
+          }}
+        />
+      </View>
+
+      {/* -----------------------------------------------------
+          RIGHT HOLOGRAM BILLBOARD
+      ----------------------------------------------------- */}
+      <View
+        style={{
+          position: 'absolute',
+          right: SCREEN_W * 0.01,
+          top: HORIZON_Y + 68,
+          width: SCREEN_W * 0.20,
+          height: 69,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: '#C675FF',
+          backgroundColor: 'rgba(54,34,110,0.72)',
+          transform: [{ rotate: '4deg' }],
+          shadowColor: '#C56EFF',
+          shadowOpacity: 0.70,
+          shadowRadius: 12,
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            left: 8,
+            right: 8,
+            top: 9,
+            height: 5,
+            borderRadius: 4,
+            backgroundColor: '#FF77CF',
+            opacity: pulse2,
+          }}
+        />
+
+        <View
+          style={{
+            position: 'absolute',
+            right: 8,
+            width: '51%',
+            top: 24,
+            height: 4,
+            borderRadius: 3,
+            backgroundColor: '#FFFFFF',
+            opacity: 0.65,
+          }}
+        />
+
+        <View
+          style={{
+            position: 'absolute',
+            right: 8,
+            width: '68%',
+            top: 36,
+            height: 4,
+            borderRadius: 3,
+            backgroundColor: '#79EFFF',
+            opacity: 0.76,
+          }}
+        />
+
+        <View
+          style={{
+            position: 'absolute',
+            right: 8,
+            width: '37%',
+            top: 48,
+            height: 4,
+            borderRadius: 3,
+            backgroundColor: '#B483FF',
+            opacity: 0.74,
+          }}
+        />
+      </View>
+
+      {/* -----------------------------------------------------
+          SIDE SUPPORT ARCHES
+      ----------------------------------------------------- */}
+      {[0, 1, 2].map(i => {
+        const y = HORIZON_Y + 128 + i * 116;
+        const size = 12 + i * 5;
+
+        return (
+          <React.Fragment key={'cyber-side-arch-' + i}>
+            <View
+              style={{
+                position: 'absolute',
+                left: SCREEN_W * (0.045 - i * 0.006),
+                top: y,
+                width: size,
+                height: 64 + i * 24,
+                borderRadius: 7,
+                backgroundColor: '#284875',
+                borderWidth: 1,
+                borderColor: 'rgba(83,236,255,0.62)',
+              }}
+            />
+
+            <View
+              style={{
+                position: 'absolute',
+                right: SCREEN_W * (0.045 - i * 0.006),
+                top: y,
+                width: size,
+                height: 64 + i * 24,
+                borderRadius: 7,
+                backgroundColor: '#403268',
+                borderWidth: 1,
+                borderColor: 'rgba(202,119,255,0.62)',
+              }}
+            />
+
+            <View
+              style={{
+                position: 'absolute',
+                left: SCREEN_W * (0.052 - i * 0.006),
+                top: y + 8,
+                width: 3,
+                height: 40 + i * 20,
+                borderRadius: 3,
+                backgroundColor: '#51EDFF',
+                opacity: pulse,
+              }}
+            />
+
+            <View
+              style={{
+                position: 'absolute',
+                right: SCREEN_W * (0.052 - i * 0.006),
+                top: y + 8,
+                width: 3,
+                height: 40 + i * 20,
+                borderRadius: 3,
+                backgroundColor: '#D074FF',
+                opacity: pulse2,
+              }}
+            />
+          </React.Fragment>
+        );
+      })}
+
+      {/* -----------------------------------------------------
+          TRACKSIDE WARNING LIGHTS
+      ----------------------------------------------------- */}
+      {[0, 1, 2, 3, 4, 5].map(i => {
+        const y = HORIZON_Y + 82 + i * 62;
+        const size = 3 + i * 0.8;
+
+        return (
+          <React.Fragment key={'cyber-depth-warning-' + i}>
+            <View
+              style={{
+                position: 'absolute',
+                left: SCREEN_W * (0.095 - i * 0.002),
+                top: y,
+                width: size,
+                height: size,
+                borderRadius: 20,
+                backgroundColor: i % 2 === 0 ? '#57F0FF' : '#FFDB66',
+                opacity: 0.86,
+              }}
+            />
+
+            <View
+              style={{
+                position: 'absolute',
+                right: SCREEN_W * (0.095 - i * 0.002),
+                top: y,
+                width: size,
+                height: size,
+                borderRadius: 20,
+                backgroundColor: i % 2 === 0 ? '#C974FF' : '#FF6DB9',
+                opacity: 0.86,
+              }}
+            />
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+}
+
+function CyberRoadsideProps({
+  world,
+  scrollOffset,
+}: {
+  world: World;
+  scrollOffset: number;
+}) {
+  if (world.id !== 'cyber') return null;
+
+  const glow = 0.58 + Math.sin(scrollOffset * Math.PI * 2) * 0.18;
+
+  const poles = [
+    { left: SCREEN_W * 0.015, top: HORIZON_Y + 56, h: 88, c: '#49EBFF' },
+    { left: SCREEN_W * 0.91,  top: HORIZON_Y + 82, h: 106, c: '#C26EFF' },
+    { left: SCREEN_W * 0.035, top: HORIZON_Y + 190, h: 132, c: '#6FF4FF' },
+    { left: SCREEN_W * 0.895, top: HORIZON_Y + 225, h: 145, c: '#FF72C7' },
+  ];
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {poles.map((p, i) => (
+        <View
+          key={'cyber-pole-' + i}
+          style={{
+            position: 'absolute',
+            left: p.left,
+            top: p.top,
+            width: i < 2 ? 15 : 20,
+            height: p.h,
+          }}
+        >
+          <LinearGradient
+            colors={['#5B769F', '#263F70', '#172A4F']}
+            style={{
+              position: 'absolute',
+              left: 2,
+              right: 2,
+              top: 0,
+              bottom: 0,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: 'rgba(185,225,255,0.35)',
+            }}
+          />
+
+          <View
+            style={{
+              position: 'absolute',
+              left: '37%',
+              width: '26%',
+              top: '7%',
+              bottom: '8%',
+              borderRadius: 6,
+              backgroundColor: p.c,
+              opacity: glow,
+              shadowColor: p.c,
+              shadowOpacity: 1,
+              shadowRadius: 12,
+            }}
+          />
+
+          <View
+            style={{
+              position: 'absolute',
+              left: -5,
+              right: -5,
+              top: -4,
+              height: 9,
+              borderRadius: 6,
+              backgroundColor: '#7896BE',
+            }}
+          />
+        </View>
+      ))}
+
+      {/* Left floating hologram platform */}
+      <View
+        style={{
+          position: 'absolute',
+          left: -22,
+          top: HORIZON_Y + 156,
+          width: SCREEN_W * 0.24,
+          height: 48,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: '#49E9FF',
+          backgroundColor: 'rgba(34,70,126,0.82)',
+          transform: [{ rotate: '-4deg' }],
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            right: 9,
+            top: 8,
+            width: '52%',
+            height: 7,
+            borderRadius: 5,
+            backgroundColor: '#5FF4FF',
+            opacity: 0.72,
+          }}
+        />
+        <View
+          style={{
+            position: 'absolute',
+            right: 14,
+            top: 23,
+            width: '35%',
+            height: 4,
+            borderRadius: 4,
+            backgroundColor: '#B57AFF',
+            opacity: 0.8,
+          }}
+        />
+      </View>
+
+      {/* Right floating hologram platform */}
+      <View
+        style={{
+          position: 'absolute',
+          right: -25,
+          top: HORIZON_Y + 288,
+          width: SCREEN_W * 0.27,
+          height: 55,
+          borderRadius: 13,
+          borderWidth: 1,
+          borderColor: '#CB75FF',
+          backgroundColor: 'rgba(45,55,126,0.86)',
+          transform: [{ rotate: '5deg' }],
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            left: 11,
+            top: 9,
+            width: '58%',
+            height: 7,
+            borderRadius: 5,
+            backgroundColor: '#FF72CB',
+            opacity: 0.78,
+          }}
+        />
+        <View
+          style={{
+            position: 'absolute',
+            left: 16,
+            top: 25,
+            width: '38%',
+            height: 4,
+            borderRadius: 4,
+            backgroundColor: '#6BF4FF',
+            opacity: 0.82,
+          }}
+        />
+      </View>
+
+      {/* small runway lights */}
+      {[0, 1, 2, 3, 4].map(i => (
+        <React.Fragment key={'runway-light-' + i}>
+          <View
+            style={{
+              position: 'absolute',
+              left: SCREEN_W * (0.065 + i * 0.004),
+              top: HORIZON_Y + 100 + i * 70,
+              width: 5 + i,
+              height: 5 + i,
+              borderRadius: 99,
+              backgroundColor: '#55EEFF',
+              shadowColor: '#55EEFF',
+              shadowOpacity: 1,
+              shadowRadius: 8,
+            }}
+          />
+
+          <View
+            style={{
+              position: 'absolute',
+              right: SCREEN_W * (0.065 + i * 0.004),
+              top: HORIZON_Y + 100 + i * 70,
+              width: 5 + i,
+              height: 5 + i,
+              borderRadius: 99,
+              backgroundColor: '#C672FF',
+              shadowColor: '#C672FF',
+              shadowOpacity: 1,
+              shadowRadius: 8,
+            }}
+          />
+        </React.Fragment>
+      ))}
+    </View>
+  );
+}
 
 const AirParticles = React.memo(function AirParticles({ world }: { world: World }) {
   const driftA = useRef(new Animated.Value(0)).current;
@@ -2016,6 +3749,10 @@ export function GameScene({
         {/* Cyber city skyline behind the horizon */}
         <CitySilhouette world={world} />
         <CityNeon world={world} />
+          <CyberWorld2
+            world={world}
+            scrollOffset={displayState.scrollOffset}
+          />
         <NeonBillboards world={world} />
         <FlyingVehicles world={world} />
         <BloomLighting world={world} />
@@ -2038,7 +3775,8 @@ export function GameScene({
           style={{ position: 'absolute', top: HORIZON_Y, left: 0, right: 0, bottom: 0 }}
         />
 
-        <TrackLines world={world} />
+        <CyberTrackSurface world={world} />
+          <TrackLines world={world} />
         <SpeedLines scrollOffset={displayState.scrollOffset} world={world} />
         <TrackSideFX scrollOffset={displayState.scrollOffset} world={world} />
 
@@ -2056,7 +3794,15 @@ export function GameScene({
         <DistanceFog world={world} />
 
         {/* Floating air particles */}
-        <AirParticles world={world} />
+        <CyberWorldDepth
+            world={world}
+            scrollOffset={displayState.scrollOffset}
+          />
+          <CyberRoadsideProps
+            world={world}
+            scrollOffset={displayState.scrollOffset}
+          />
+          <AirParticles world={world} />
 
         {/* Crystals */}
         {displayState.crystalObjects.map((c) => (
@@ -2070,7 +3816,11 @@ export function GameScene({
 
         {/* Obstacles */}
         {displayState.obstacles.map((o) => (
-          <ObstacleView key={o.id} obstacle={o} world={world} />
+          world.id === 'cyber' ? (
+              <CyberObstacleSkin key={o.id} obstacle={o} world={world} />
+            ) : (
+              <ObstacleView key={o.id} obstacle={o} world={world} />
+            )
         ))}
 
         {/* Intro energy beam */}
