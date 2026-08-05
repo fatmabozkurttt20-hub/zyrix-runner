@@ -1,0 +1,71 @@
+[gd_scene load_steps=8 format=3]
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 1
+background_color = Color(0.018, 0.008, 0.07, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.25, 0.18, 0.55, 1)
+ambient_light_energy = 1.4
+
+[sub_resource type="StandardMaterial3D" id="RoadMaterial"]
+albedo_color = Color(0.025, 0.035, 0.09, 1)
+metallic = 0.65
+roughness = 0.25
+
+[sub_resource type="BoxMesh" id="RoadMesh"]
+material = SubResource("RoadMaterial")
+size = Vector3(12, 0.35, 120)
+
+[sub_resource type="StandardMaterial3D" id="PlayerMaterial"]
+albedo_color = Color(0.1, 0.95, 1, 1)
+emission_enabled = true
+emission = Color(0.02, 0.55, 1, 1)
+emission_energy_multiplier = 3.0
+
+[sub_resource type="CapsuleMesh" id="PlayerMesh"]
+material = SubResource("PlayerMaterial")
+radius = 0.7
+height = 2.4
+
+[sub_resource type="StandardMaterial3D" id="BoardMaterial"]
+albedo_color = Color(0.8, 0.08, 1, 1)
+emission_enabled = true
+emission = Color(0.55, 0.02, 1, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="BoxMesh" id="BoardMesh"]
+material = SubResource("BoardMaterial")
+size = Vector3(2.4, 0.18, 4.0)
+
+[node name="Main" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+
+[node name="MoonLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-55, -25, 0)
+light_color = Color(0.55, 0.7, 1, 1)
+light_energy = 1.5
+shadow_enabled = true
+
+[node name="Road" type="MeshInstance3D" parent="."]
+position = Vector3(0, -0.2, -45)
+mesh = SubResource("RoadMesh")
+
+[node name="City" type="Node3D" parent="."]
+
+[node name="Runner" type="Node3D" parent="."]
+position = Vector3(0, 1.4, 4)
+
+[node name="Board" type="MeshInstance3D" parent="Runner"]
+position = Vector3(0, -1.15, 0)
+mesh = SubResource("BoardMesh")
+
+[node name="Body" type="MeshInstance3D" parent="Runner"]
+mesh = SubResource("PlayerMesh")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+position = Vector3(0, 6.5, 12)
+rotation_degrees = Vector3(-17, 0, 0)
+current = true
+fov = 70
