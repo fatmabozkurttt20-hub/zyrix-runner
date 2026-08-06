@@ -1,0 +1,75 @@
+name: ZYRIX 3D Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'zyrix-3d/**'
+      - '.github/workflows/godot-android.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Download Godot
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip
+          unzip -q Godot_v4.4.1-stable_linux.x86_64.zip
+          mv Godot_v4.4.1-stable_linux.x86_64 godot
+          chmod +x godot
+
+      - name: Install export templates
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates/4.4.1.stable
+          unzip -q Godot_v4.4.1-stable_export_templates.tpz -d /tmp/godot-templates
+          cp -r /tmp/godot-templates/templates/* ~/.local/share/godot/export_templates/4.4.1.stable/
+
+      - name: Configure Godot Android SDK
+        run: |
+          mkdir -p ~/.config/godot
+          echo '[gd_resource type="EditorSettings" format=3]' > ~/.config/godot/editor_settings-4.tres
+          echo '[resource]' >> ~/.config/godot/editor_settings-4.tres
+          echo "export/android/android_sdk_path = \"$ANDROID_HOME\"" >> ~/.config/godot/editor_settings-4.tres
+          echo "export/android/java_sdk_path = \"$JAVA_HOME\"" >> ~/.config/godot/editor_settings-4.tres
+      - name: Import project
+        run: ./godot --headless --editor --path zyrix-3d --quit-after 10
+
+      - name: Create Android debug keystore
+        run: |
+          mkdir -p "$HOME/.android"
+          keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Build APK
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /home/runner/.android/debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+        run: |
+          mkdir -p zyrix-3d/build
+          ./godot --headless --path zyrix-3d --export-debug "Android" zyrix-3d/build/ZYRIX-3D.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZYRIX-3D-Android
+          path: zyrix-3d/build/ZYRIX-3D.apk
