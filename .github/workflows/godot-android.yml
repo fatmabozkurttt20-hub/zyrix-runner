@@ -66,6 +66,7 @@ jobs:
           GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
           mkdir -p zyrix-3d/build
+          ./godot --headless --path zyrix-3d --verbose --editor --quit-after 5 || true
           ./godot --headless --path zyrix-3d --export-debug "Android" zyrix-3d/build/ZYRIX-3D.apk
 
       - name: Upload APK
