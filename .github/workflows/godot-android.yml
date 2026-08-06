@@ -54,7 +54,23 @@ jobs:
       - name: Import project
         run: ./godot --headless --editor --path zyrix-3d --quit-after 10
 
+      - name: Create Android debug keystore
+        run: |
+          mkdir -p "$HOME/.android"
+          keytool -genkeypair -v 
+            -keystore "$HOME/.android/debug.keystore" 
+            -storepass android 
+            -alias androiddebugkey 
+            -keypass android 
+            -keyalg RSA 
+            -keysize 2048 
+            -validity 10000 
+            -dname "CN=Android Debug,O=Android,C=US"
       - name: Build APK
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /home/runner/.android/debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
           mkdir -p zyrix-3d/build
           ./godot --headless --path zyrix-3d --export-debug "Android" zyrix-3d/build/ZYRIX-3D.apk
