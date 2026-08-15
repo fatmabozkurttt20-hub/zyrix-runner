@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: zyrix-app
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile --ignore-workspace
 
       - uses: actions/setup-java@v4
         with:
