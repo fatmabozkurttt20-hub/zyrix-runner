@@ -2735,6 +2735,87 @@ function CyberRoadsideProps({
   );
 }
 
+const VOLCANO_EMBERS = Array.from({ length: 22 }, (_, i) => ({
+  x: (i * 47) % 100 / 100,
+  y: (i * 83) % 100 / 100,
+  size: 3 + (i % 4),
+  group: i % 3,
+}));
+
+const VolcanoEmbers = React.memo(function VolcanoEmbers({ world }: { world: World }) {
+  const rise0 = useRef(new Animated.Value(0)).current;
+  const rise1 = useRef(new Animated.Value(0)).current;
+  const rise2 = useRef(new Animated.Value(0)).current;
+  const shimmer = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (world.id !== 'volcano') return;
+    const mk = (v: Animated.Value, dur: number) =>
+      Animated.loop(
+        Animated.timing(v, { toValue: 1, duration: dur, useNativeDriver: true, easing: Easing.linear })
+      );
+    const a = mk(rise0, 2600);
+    const b = mk(rise1, 3400);
+    const c = mk(rise2, 4200);
+    const s = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmer, { toValue: 1, duration: 1800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+        Animated.timing(shimmer, { toValue: 0, duration: 1800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+      ])
+    );
+    a.start(); b.start(); c.start(); s.start();
+    return () => { a.stop(); b.stop(); c.stop(); s.stop(); };
+  }, [world.id, rise0, rise1, rise2, shimmer]);
+
+  if (world.id !== 'volcano') return null;
+
+  const rises = [rise0, rise1, rise2];
+
+  return (
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: HORIZON_Y - 60,
+          height: 140,
+          backgroundColor: world.horizonGlow,
+          opacity: shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.65] }),
+        }}
+      />
+
+      {VOLCANO_EMBERS.map((m, i) => {
+        const v = rises[m.group];
+        return (
+          <Animated.View
+            key={'ember-' + i}
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: m.x * SCREEN_W,
+              top: m.y * (SCREEN_W * 2.2) + 200,
+              width: m.size,
+              height: m.size,
+              borderRadius: m.size / 2,
+              backgroundColor: m.group === 0 ? '#FFD27A' : world.accentColor,
+              shadowColor: world.trackColor,
+              shadowOpacity: 1,
+              shadowRadius: 6,
+              opacity: v.interpolate({ inputRange: [0, 0.15, 0.85, 1], outputRange: [0, 0.9, 0.5, 0] }),
+              transform: [
+                { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -220 - m.size * 20] }) },
+                { translateX: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, m.group === 0 ? 14 : -14, 6] }) },
+              ],
+            }}
+          />
+        );
+      })}
+    </>
+  );
+});
+
 const AirParticles = React.memo(function AirParticles({ world }: { world: World }) {
   const driftA = useRef(new Animated.Value(0)).current;
   const driftB = useRef(new Animated.Value(0)).current;
@@ -3872,6 +3953,7 @@ export function GameScene({
             scrollOffset={displayState.scrollOffset}
           />
           <AirParticles world={world} />
+          <VolcanoEmbers world={world} />
 
         {/* Crystals */}
         {displayState.crystalObjects.map((c) => (
