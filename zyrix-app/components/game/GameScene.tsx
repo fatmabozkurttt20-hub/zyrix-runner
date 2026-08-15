@@ -49,7 +49,6 @@ function perspPos(lane: 0 | 1 | 2, progress: number) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CyberTrackSurface({ world }: { world: World }) {
-  if (world.id !== 'cyber') return null;
 
   return (
     <View
@@ -1130,29 +1129,59 @@ function CyberMascotRider({ world }: { world: World }) {
         alignItems: 'center',
       }}
     >
-      {/* ears */}
+      {/* antennae */}
       <View
         style={{
           position: 'absolute',
-          left: 12,
-          top: 9,
-          width: 18,
-          height: 22,
-          borderRadius: 10,
-          backgroundColor: '#394B73',
-          transform: [{ rotate: '-18deg' }],
+          left: 22,
+          top: -14,
+          width: 4,
+          height: 28,
+          borderRadius: 2,
+          backgroundColor: '#3E7A6B',
+          transform: [{ rotate: '-22deg' }],
         }}
       />
       <View
         style={{
           position: 'absolute',
-          right: 12,
-          top: 9,
-          width: 18,
-          height: 22,
-          borderRadius: 10,
-          backgroundColor: '#394B73',
-          transform: [{ rotate: '18deg' }],
+          left: 17,
+          top: -20,
+          width: 9,
+          height: 9,
+          borderRadius: 5,
+          backgroundColor: world.accentColor,
+          shadowColor: world.accentColor,
+          shadowOpacity: 1,
+          shadowRadius: 8,
+          elevation: 4,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          right: 22,
+          top: -14,
+          width: 4,
+          height: 28,
+          borderRadius: 2,
+          backgroundColor: '#3E7A6B',
+          transform: [{ rotate: '22deg' }],
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          right: 17,
+          top: -20,
+          width: 9,
+          height: 9,
+          borderRadius: 5,
+          backgroundColor: world.accentColor,
+          shadowColor: world.accentColor,
+          shadowOpacity: 1,
+          shadowRadius: 8,
+          elevation: 4,
         }}
       />
 
@@ -1160,99 +1189,112 @@ function CyberMascotRider({ world }: { world: World }) {
       <View
         style={{
           position: 'absolute',
-          top: 14,
-          width: 54,
-          height: 50,
-          borderRadius: 24,
-          backgroundColor: '#F4F8FF',
+          top: 10,
+          width: 48,
+          height: 56,
+          borderTopLeftRadius: 26,
+          borderTopRightRadius: 26,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          overflow: 'hidden',
           borderWidth: 2,
-          borderColor: 'rgba(95,225,255,0.65)',
+          borderColor: 'rgba(190,255,230,0.55)',
           shadowColor: world.trackColor,
-          shadowOpacity: 0.8,
-          shadowRadius: 12,
+          shadowOpacity: 0.9,
+          shadowRadius: 14,
           elevation: 5,
         }}
       >
-        {/* visor */}
         <LinearGradient
-          colors={['#0D2447', '#126D9B', '#37E4FF']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            position: 'absolute',
-            left: 7,
-            right: 7,
-            top: 10,
-            height: 22,
-            borderRadius: 11,
-          }}
+          colors={['#DFFFF3', '#8CF2D0', '#3FBF9A']}
+          start={{ x: 0.2, y: 0 }}
+          end={{ x: 0.8, y: 1 }}
+          style={StyleSheet.absoluteFill}
         />
 
-        {/* eyes */}
         <View
           style={{
             position: 'absolute',
-            left: 16,
-            top: 17,
-            width: 5,
-            height: 7,
-            borderRadius: 4,
-            backgroundColor: '#FFFFFF',
+            left: 6,
+            top: 20,
+            width: 15,
+            height: 20,
+            borderRadius: 10,
+            backgroundColor: '#0A1B18',
+            transform: [{ rotate: '-8deg' }],
           }}
-        />
-        <View
-          style={{
-            position: 'absolute',
-            right: 16,
-            top: 17,
-            width: 5,
-            height: 7,
-            borderRadius: 4,
-            backgroundColor: '#FFFFFF',
-          }}
-        />
+        >
+          <View
+            style={{
+              position: 'absolute',
+              left: 4,
+              top: 5,
+              width: 5,
+              height: 5,
+              borderRadius: 3,
+              backgroundColor: world.accentColor,
+              shadowColor: world.accentColor,
+              shadowOpacity: 1,
+              shadowRadius: 6,
+            }}
+          />
+        </View>
 
-        {/* smile */}
         <View
           style={{
             position: 'absolute',
-            left: 21,
-            top: 35,
-            width: 12,
-            height: 5,
-            borderBottomWidth: 2,
-            borderBottomColor: '#2C4668',
-            borderRadius: 8,
+            right: 6,
+            top: 20,
+            width: 15,
+            height: 20,
+            borderRadius: 10,
+            backgroundColor: '#0A1B18',
+            transform: [{ rotate: '8deg' }],
           }}
-        />
+        >
+          <View
+            style={{
+              position: 'absolute',
+              right: 4,
+              top: 5,
+              width: 5,
+              height: 5,
+              borderRadius: 3,
+              backgroundColor: world.accentColor,
+              shadowColor: world.accentColor,
+              shadowOpacity: 1,
+              shadowRadius: 6,
+            }}
+          />
+        </View>
       </View>
 
       {/* body */}
       <LinearGradient
-        colors={['#FFFFFF', '#D9EEFF', '#97BFFF']}
+        colors={['#DFFFF3', '#8CF2D0', '#3FBF9A']}
         style={{
           position: 'absolute',
-          top: 57,
-          width: 42,
-          height: 31,
-          borderRadius: 15,
+          top: 56,
+          width: 34,
+          height: 34,
+          borderRadius: 16,
           borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.7)',
+          borderColor: 'rgba(190,255,230,0.5)',
         }}
       />
 
-      {/* chest core */}
+      {/* glowing chest core */}
       <View
         style={{
           position: 'absolute',
-          top: 66,
+          top: 68,
           width: 13,
           height: 13,
           borderRadius: 8,
           backgroundColor: world.trackColor,
           shadowColor: world.trackColor,
           shadowOpacity: 1,
-          shadowRadius: 10,
+          shadowRadius: 12,
         }}
       />
 
@@ -1260,27 +1302,57 @@ function CyberMascotRider({ world }: { world: World }) {
       <View
         style={{
           position: 'absolute',
-          left: 9,
-          top: 61,
-          width: 22,
-          height: 9,
-          borderRadius: 7,
-          backgroundColor: '#C8DCFF',
-          transform: [{ rotate: '18deg' }],
+          left: 10,
+          top: 62,
+          width: 20,
+          height: 7,
+          borderRadius: 5,
+          backgroundColor: '#6FE0BC',
+          transform: [{ rotate: '20deg' }],
         }}
-      />
+      >
+        <View
+          style={{
+            position: 'absolute',
+            left: -3,
+            top: -1.5,
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: world.accentColor,
+            shadowColor: world.accentColor,
+            shadowOpacity: 1,
+            shadowRadius: 6,
+          }}
+        />
+      </View>
       <View
         style={{
           position: 'absolute',
-          right: 9,
-          top: 61,
-          width: 22,
-          height: 9,
-          borderRadius: 7,
-          backgroundColor: '#C8DCFF',
-          transform: [{ rotate: '-18deg' }],
+          right: 10,
+          top: 62,
+          width: 20,
+          height: 7,
+          borderRadius: 5,
+          backgroundColor: '#6FE0BC',
+          transform: [{ rotate: '-20deg' }],
         }}
-      />
+      >
+        <View
+          style={{
+            position: 'absolute',
+            right: -3,
+            top: -1.5,
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: world.accentColor,
+            shadowColor: world.accentColor,
+            shadowOpacity: 1,
+            shadowRadius: 6,
+          }}
+        />
+      </View>
     </View>
   );
 }
@@ -1711,7 +1783,6 @@ function CyberWorld2({
   world: World;
   scrollOffset: number;
 }) {
-  if (world.id !== 'cyber') return null;
 
   const pulse = 0.45 + Math.sin(scrollOffset * Math.PI * 2) * 0.10;
 
@@ -1957,7 +2028,6 @@ function CyberWorldDepth({
   world: World;
   scrollOffset: number;
 }) {
-  if (world.id !== 'cyber') return null;
 
   const pulse = 0.62 + Math.sin(scrollOffset * Math.PI * 2) * 0.16;
   const pulse2 = 0.52 + Math.cos(scrollOffset * Math.PI * 2) * 0.14;
@@ -2478,7 +2548,6 @@ function CyberRoadsideProps({
   world: World;
   scrollOffset: number;
 }) {
-  if (world.id !== 'cyber') return null;
 
   const glow = 0.58 + Math.sin(scrollOffset * Math.PI * 2) * 0.18;
 

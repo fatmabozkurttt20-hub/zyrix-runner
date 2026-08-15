@@ -60,7 +60,7 @@ export const GAME_CONFIG = {
   INVINCIBLE_MS: 0,
 
   // World transitions
-  WORLD_SCORE_INTERVAL: 1200,
+  WORLD_SCORE_INTERVAL: 400,
 
   // Controls
   LANE_CHANGE_MS: 115,       // snappy lane change
