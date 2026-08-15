@@ -1577,7 +1577,7 @@ interface Burst {
   x: number;
   y: number;
   color: string;
-  kind: 'crystal' | 'hit';
+  kind: 'crystal' | 'hit' | 'jump';
 }
 
 const BURST_DIRS = Array.from({ length: 10 }, (_, i) => {
@@ -1591,14 +1591,14 @@ function ParticleBurst({ burst, onDone }: { burst: Burst; onDone: (id: number) =
   useEffect(() => {
     Animated.timing(progress, {
       toValue: 1,
-      duration: burst.kind === 'hit' ? 560 : 420,
+      duration: burst.kind === 'hit' ? 560 : burst.kind === 'jump' ? 300 : 420,
       useNativeDriver: true,
       easing: Easing.out(Easing.cubic),
     }).start(() => onDone(burst.id));
   }, [progress, burst.id, burst.kind, onDone]);
 
-  const dist = burst.kind === 'hit' ? 74 : 46;
-  const size = burst.kind === 'hit' ? 7 : 5;
+  const dist = burst.kind === 'hit' ? 74 : burst.kind === 'jump' ? 30 : 46;
+  const size = burst.kind === 'hit' ? 7 : burst.kind === 'jump' ? 4 : 5;
   const opacity = progress.interpolate({ inputRange: [0, 0.65, 1], outputRange: [1, 0.9, 0] });
   const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0.25] });
 
@@ -3800,6 +3800,23 @@ export function GameScene({
     }
     prevCrystalsRef.current = displayState.sessionCrystals;
   }, [displayState.sessionCrystals, world.crystalColor]);
+
+  const prevJumpingRef = useRef(displayState.jumping);
+  useEffect(() => {
+    if (displayState.jumping && !prevJumpingRef.current) {
+      setBursts((b) => [
+        ...b.slice(-3),
+        {
+          id: burstIdRef.current++,
+          x: playerXValRef.current,
+          y: PLAYER_Y,
+          color: world.trackColor,
+          kind: 'jump' as const,
+        },
+      ]);
+    }
+    prevJumpingRef.current = displayState.jumping;
+  }, [displayState.jumping, world.trackColor]);
 
   const prevGameOverRef = useRef(displayState.gameOver);
   useEffect(() => {
