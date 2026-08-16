@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Line, Path, Circle, Ellipse } from 'react-native-svg';
@@ -2816,6 +2817,75 @@ const VolcanoEmbers = React.memo(function VolcanoEmbers({ world }: { world: Worl
   );
 });
 
+const LANDMARK_IMAGES: Record<string, any[]> = {
+  desert: [
+    require('../../assets/images/world-elements/bg-elements/PNG/Flat/piramid.png'),
+    require('../../assets/images/world-elements/bg-elements/PNG/Flat/temple.png'),
+  ],
+  volcano: [
+    require('../../assets/images/world-elements/bg-elements/PNG/Flat/pointy_mountains.png'),
+    require('../../assets/images/world-elements/bg-elements/PNG/Flat/mountain2.png'),
+  ],
+  jungle: [
+    require('../../assets/images/world-elements/bg-elements/PNG/Flat/tree03.png'),
+    require('../../assets/images/world-elements/bg-elements/PNG/Flat/tree07.png'),
+    require('../../assets/images/world-elements/bg-elements/PNG/Flat/tree12.png'),
+  ],
+  snow: [
+    require('../../assets/images/world-elements/bg-elements/PNG/Flat/mountain3.png'),
+    require('../../assets/images/world-elements/bg-elements/PNG/Flat/pointy_mountains.png'),
+  ],
+  space: [
+    require('../../assets/images/world-elements/bg-elements/PNG/moon_full.png'),
+    require('../../assets/images/world-elements/bg-elements/PNG/moon_half.png'),
+  ],
+};
+
+const LANDMARK_SLOTS = [
+  { left: '6%', bottom: 0, w: 90, h: 90 },
+  { left: '68%', bottom: 0, w: 110, h: 110 },
+  { left: '38%', bottom: 0, w: 70, h: 70 },
+];
+
+function WorldLandmarks({ world }: { world: World }) {
+  const images = LANDMARK_IMAGES[world.id];
+  if (!images) return null;
+
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: HORIZON_Y - 130,
+        height: 130,
+        opacity: 0.85,
+      }}
+    >
+      {LANDMARK_SLOTS.map((slot, i) => {
+        const img = images[i % images.length];
+        return (
+          <Image
+            key={i}
+            source={img}
+            resizeMode="contain"
+            style={{
+              position: 'absolute',
+              left: slot.left as any,
+              bottom: slot.bottom,
+              width: slot.w,
+              height: slot.h,
+              tintColor: world.trackColor,
+              opacity: 0.8,
+            }}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
 const AirParticles = React.memo(function AirParticles({ world }: { world: World }) {
   const driftA = useRef(new Animated.Value(0)).current;
   const driftB = useRef(new Animated.Value(0)).current;
@@ -3969,6 +4039,7 @@ export function GameScene({
             world={world}
             scrollOffset={displayState.scrollOffset}
           />
+          <WorldLandmarks world={world} />
           <AirParticles world={world} />
           <VolcanoEmbers world={world} />
 
