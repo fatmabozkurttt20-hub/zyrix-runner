@@ -2549,6 +2549,7 @@ function CyberRoadsideProps({
   world: World;
   scrollOffset: number;
 }) {
+  if (world.id !== 'cyber' && world.id !== 'space') return null;
 
   const glow = 0.58 + Math.sin(scrollOffset * Math.PI * 2) * 0.18;
 
