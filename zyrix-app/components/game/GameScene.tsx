@@ -3069,6 +3069,7 @@ const BILLBOARDS = [
 ];
 
 function NeonBillboards({ world }: { world: World }) {
+  if (world.id !== 'cyber' && world.id !== 'space') return null;
   const scan = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const anim = Animated.loop(
@@ -3465,6 +3466,7 @@ const HOLOS = [
 ];
 
 const HologramSigns = React.memo(function HologramSigns({ world }: { world: World }) {
+  if (world.id !== 'cyber' && world.id !== 'space') return null;
   const flicker = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const anim = Animated.loop(
