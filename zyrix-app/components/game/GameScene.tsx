@@ -3984,6 +3984,21 @@ export function GameScene({
           style={{ position: 'absolute', top: 0, left: 0, right: 0, height: HORIZON_Y + 20 }}
         />
 
+        <Text
+          style={{
+            position: 'absolute',
+            top: 250,
+            left: 10,
+            color: '#FF0000',
+            fontSize: 22,
+            fontWeight: 'bold',
+            backgroundColor: '#FFFFFF',
+            zIndex: 999,
+            padding: 4,
+          }}
+        >
+          DEBUG world.id = {world.id}
+        </Text>
         <Stars world={world} />
 
         {/* Cyber city skyline behind the horizon */}
